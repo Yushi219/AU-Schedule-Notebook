@@ -341,7 +341,19 @@ const gh = {
   b64(str) { return btoa(unescape(encodeURIComponent(str))); },
   blobB64(blob) { return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); },
   setStatus(st, msg) { this.status = st; this.msg = msg; document.querySelectorAll('.sync').forEach(el => { el.className = 'sync ' + st; el.textContent = msg; }); },
-  schedule() { if (!this.on()) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 12000); },
+  schedule() { if (!this.on()) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), S.dirty['notes/schedule.json'] ? 4000 : 12000); },
+  async pullSchedule() {
+    if (!this.on()) return false;
+    try { const r = await this.get('notes/schedule.json'); if (!r || !r.json) return false; const before = JSON.stringify([S.schedule, S.removed, S.overview.at]); mergeSchedule(r.json); const changed = before !== JSON.stringify([S.schedule, S.removed, S.overview.at]); if (changed) save(); if (!this.status || this.status === 'ok') this.setStatus('ok', '☁ 已同步 ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })); return changed; }
+    catch (e) { console.warn(e); this.setStatus('err', '☁ 拉取失败'); return false; }
+  },
+  // periodic pull so a change made on the other device shows up without a manual refresh
+  async poll() {
+    if (!this.on() || this.busy || document.visibilityState !== 'visible' || !navigator.onLine) return;
+    if (UI.route === 'cal') { if (await this.pullSchedule()) { renderGrid(); renderMobileList(); toast('☁ 日程已从云端更新'); } }
+    else if (UI.route === 'rec' && UI.code) { const code = UI.code; if (await this.pull(code) && UI.route === 'rec' && UI.code === code) { const a = document.activeElement; if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT')) renderSegs(); else renderRec(); } }
+    else if (UI.route === 'ov') { if (await this.pullSchedule()) renderOverview(); }
+  },
   async push(force) {
     if (!this.on() || this.busy) return;
     const paths = Object.keys(S.dirty); if (!paths.length && !force) return;
@@ -424,6 +436,8 @@ function mergeSchedule(r) {
   if (r.overview && (r.overview.at || 0) > (S.overview.at || 0)) S.overview = r.overview;
 }
 setInterval(() => { if (gh.on() && Object.keys(S.dirty).length && navigator.onLine) gh.push(); }, 30000);
+setInterval(() => gh.poll(), 20000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { if (Object.keys(S.dirty).length) gh.push(); gh.poll(); } });
 
 /* ---------------- translation chain ---------------- */
 const tr = {
@@ -663,7 +677,7 @@ function renderCal() {
     <div class="hr">
       <div class="search"><input id="q" placeholder="🔍 ${T('Search all 750 AU sessions (code / title / speaker) and add to my schedule', '搜索全部 750 门课（代码/标题/讲者），回车加入日程')}" autocomplete="off"><div class="dd" id="dd"></div></div>
       <button class="btn" onclick="nav('#/overview')">🧭 ${T('Overview', '总览总结')}</button>
-      <button class="btn" onclick="openSettings()">⚙</button>
+      <button class="btn" onclick="openSettings()">⚙ <span class="sync ${gh.status}" style="font-size:11px">${gh.on() ? (gh.msg || '☁ GitHub') : T('local only', '仅本机 · 未同步')}</span></button>
       <button class="btn" onclick="toggleLang()">${T('中文', 'EN')}</button>
     </div>
   </header>
