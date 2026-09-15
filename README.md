@@ -7,7 +7,7 @@ Static web app (no server) for Autodesk University 2026:
 - **Overview** – cross-course synthesis of every recorded session (local or Claude).
 - **Sync** – optional GitHub token pushes `notes/*.json` to this repo so phone and laptop share the same transcript.
 
-Live: https://yushi219.github.io/AU-Schedule-Notebook/
+Live: https://yushi219.github.io/AU-Schedule-Notebook/ (GitHub Pages, source = branch `main` / root)
 
 ## Run locally
 
