@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1115">
+<title>AU 2026 · Schedule Notebook</title>
+<style>
+:root{--bg:#0f1115;--panel:#1a1d24;--panel2:#14171e;--line:#2a2e37;--txt:#e8eaed;--muted:#9aa0ab;--gold:#f5c518;--blue:#4f9dff;--green:#3ecf8e;--red:#ff6b6b;--purple:#c3aaff;}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
+a{color:var(--blue);}
+button{font-family:inherit;}
+.btn{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:6px 12px;border-radius:18px;cursor:pointer;font-size:12px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{border-color:var(--blue);color:var(--blue);}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#0b1220;font-weight:600;}
+.btn.primary:hover{color:#000;filter:brightness(1.1);}
+.btn.danger{border-color:#6b2a2a;color:var(--red);}
+.btn.rec{background:#3a1c1c;border-color:var(--red);color:#ffb3b3;}
+.btn.rec.on{background:var(--red);color:#fff;animation:pulse 1.4s infinite;}
+.btn.sm{padding:3px 9px;font-size:11px;}
+.btn:disabled{opacity:.45;cursor:default;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,107,.6);}70%{box-shadow:0 0 0 10px rgba(255,107,107,0);}100%{box-shadow:0 0 0 0 rgba(255,107,107,0);}}
+input,textarea,select{font-family:inherit;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 10px;font-size:13px;outline:none;}
+input:focus,textarea:focus{border-color:var(--blue);}
+textarea{width:100%;resize:vertical;line-height:1.55;}
+.muted{color:var(--muted);}
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:.3px;white-space:nowrap;}
+.t-full{background:#5a2020;color:#ff9d9d;}.t-dup{background:#4a3d18;color:#ffd86b;}.t-unique{background:#173d33;color:#5fe0ad;}
+.t-backup{background:#3d3320;color:#ffce7a;}.t-strat{background:#2a2350;color:#c3aaff;}.t-lab{background:#173650;color:#7cc0ff;}.t-short{background:#333;color:#bbb;}.t-add{background:#2b3140;color:#aab6d0;}.t-note{background:#1f3a2c;color:#8fe3b5;}
+
+/* ===== header ===== */
+header{padding:10px 18px;border-bottom:1px solid var(--line);flex:0 0 auto;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;}
+header .hl{flex:1 1 300px;min-width:0;}
+header h1{margin:0 0 3px;font-size:17px;}
+header p{margin:0;color:var(--muted);font-size:12px;}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-size:11.5px;color:var(--muted);align-items:center;}
+.legend span{display:inline-flex;align-items:center;gap:5px;}
+.dot{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid var(--line);}
+.hr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:0 1 auto;}
+.search{position:relative;flex:1 1 260px;max-width:460px;min-width:200px;}
+.search input{width:100%;border-radius:20px;padding:8px 14px;}
+.search .dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;max-height:60vh;overflow:auto;z-index:120;box-shadow:0 12px 40px rgba(0,0,0,.6);display:none;}
+.search .dd.on{display:block;}
+.search .it{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:flex-start;}
+.search .it:hover,.search .it.sel{background:#232732;}
+.search .it .c{color:var(--muted);font-size:10.5px;letter-spacing:.4px;min-width:60px;}
+.search .it .t{font-weight:600;font-size:12.5px;line-height:1.3;}
+.search .it .m{color:var(--muted);font-size:11px;margin-top:2px;}
+.search .it .in{color:var(--green);font-size:10px;margin-left:auto;white-space:nowrap;}
+
+/* ===== calendar grid (desktop) ===== */
+.scroller{flex:1 1 auto;overflow:auto;position:relative;}
+.gridwrap{position:relative;min-width:1500px;min-height:100%;}
+.daynames{display:grid;position:sticky;top:0;background:var(--bg);z-index:40;border-bottom:2px solid var(--line);}
+.daynames .cell{padding:9px 14px;font-weight:700;font-size:14px;border-right:1px solid var(--line);}
+.daynames .cell small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px;}
+.tg{position:relative;}
+.axis-tk{border-top:1px solid var(--line);border-right:1px solid var(--line);padding:2px 6px 0;color:var(--muted);font-size:11px;text-align:right;font-variant-numeric:tabular-nums;}
+.axis-tk.major{color:#c7cbd2;font-weight:600;}
+.sub{display:grid;gap:4px;padding:2px 4px;border-right:1px solid var(--line);}
+.sess{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:7px;padding:5px 8px;cursor:pointer;transition:box-shadow .12s;background:#232732;display:flex;flex-direction:column;gap:2px;min-width:0;position:relative;overflow:auto;margin:1px 0;}
+.sess:hover{box-shadow:0 6px 20px rgba(0,0,0,.6);border-color:var(--blue);z-index:30;}
+.sess.p1{border-left-color:var(--green);}.sess.p2{border-left-color:var(--gold);}.sess.p3{border-left-color:var(--muted);}
+.sess.full{background:#3a2626;border-left-color:var(--red);}
+.sess.added{border-left-color:#8fa3c9;background:#20252e;}
+.sess.dim{opacity:.24;}
+.sess.hi{box-shadow:0 0 0 2px var(--gold),0 6px 20px rgba(0,0,0,.6);z-index:29;}
+.rank{position:absolute;top:6px;right:7px;font-size:9px;font-weight:700;color:#0f1115;background:var(--green);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;}
+.sess.p2 .rank{background:var(--gold);}.sess.p3 .rank{background:var(--muted);}.sess.full .rank{background:var(--red);color:#fff;}.sess.added .rank{background:#8fa3c9;}
+.code{font-size:9.5px;color:var(--muted);letter-spacing:.4px;}
+.title{font-size:11.5px;font-weight:600;line-height:1.22;padding-right:16px;}
+.time{font-size:10px;color:var(--muted);}
+.stars{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:3px;}
+.srow{font-size:9.5px;color:var(--muted);display:inline-flex;align-items:center;gap:3px;}
+.srow b{color:#c7cbd2;font-weight:500;}
+.dots{color:var(--gold);font-size:10px;letter-spacing:.5px;}
+.tags{display:flex;flex-wrap:wrap;gap:4px;}
+.sess.mini{gap:1px;padding:4px 8px;}
+.sess.mini .stars{display:none;}
+.sess.mini .title{font-size:11px;}
+svg.ribbons{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;}
+.notebadge{font-size:9.5px;color:#8fe3b5;display:inline-flex;gap:5px;}
+
+/* ===== mobile list ===== */
+.mlist{display:none;flex:1 1 auto;overflow:auto;}
+.daytabs{display:flex;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:5;}
+.daytabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 4px;font-size:13px;font-weight:600;}
+.daytabs button.on{color:var(--txt);border-bottom-color:var(--gold);}
+.mday{padding:10px 12px 40px;display:flex;flex-direction:column;gap:8px;}
+.mcard{border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:10px;padding:9px 12px;background:#232732;}
+.mcard.p1{border-left-color:var(--green);}.mcard.p2{border-left-color:var(--gold);}.mcard.p3{border-left-color:var(--muted);}.mcard.full{border-left-color:var(--red);background:#3a2626;}.mcard.added{border-left-color:#8fa3c9;}
+.mcard .title{font-size:13.5px;padding-right:0;}
+.mcard .time{font-size:11.5px;margin:2px 0 4px;}
+.mcard .row{display:flex;gap:6px;align-items:center;margin-top:6px;}
+.mgap{color:var(--muted);font-size:11px;padding:2px 6px;}
+
+/* ===== modal ===== */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:100;padding:18px;}
+.overlay.on{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;}
+.modal h2{margin:0 0 4px;font-size:18px;line-height:1.35;}
+.m-code{color:var(--muted);font-size:12px;letter-spacing:.5px;}
+.m-meta{margin:10px 0;color:#c7cbd2;font-size:12.5px;line-height:1.6;}
+.m-tags{margin:8px 0 14px;display:flex;flex-wrap:wrap;gap:6px;}
+.rate-box{background:#14171e;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;display:flex;gap:26px;}
+.rate-box .srow{font-size:13px;}.rate-box .dots{font-size:15px;}
+.m-note{background:#1d2a24;border-left:3px solid var(--green);padding:10px 13px;border-radius:6px;font-size:12.5px;line-height:1.55;margin:12px 0;}
+.m-note.dup{background:#2a2718;border-left-color:var(--gold);}.m-note.full{background:#2e1e1e;border-left-color:var(--red);}
+.sec-h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:16px 0 6px;}
+.m-desc{color:#c7cbd2;font-size:12.5px;line-height:1.65;white-space:pre-wrap;}
+.m-spk{color:#d7dae0;font-size:12px;margin-top:4px;line-height:1.7;}
+.close{float:right;cursor:pointer;color:var(--muted);font-size:24px;line-height:1;margin:-6px -6px 0 0;}
+.close:hover{color:#fff;}
+.m-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px;}
+.field{margin:10px 0;}
+.field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px;}
+.field input{width:100%;}
+.field small{display:block;color:var(--muted);font-size:11px;margin-top:4px;line-height:1.5;}
+
+/* ===== record page ===== */
+.rec{display:flex;flex-direction:column;height:100%;flex:1 1 auto;min-height:0;}
+.rec-head{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.rec-head .ttl{flex:1 1 200px;min-width:0;}
+.rec-head .ttl b{display:block;font-size:14px;line-height:1.3;}
+.rec-head .ttl span{color:var(--muted);font-size:11px;}
+.rec-head .timer{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:56px;}
+.sync{font-size:11px;color:var(--muted);white-space:nowrap;}
+.sync.ok{color:var(--green);}.sync.err{color:var(--red);}.sync.busy{color:var(--gold);}
+.rec-body{display:flex;flex:1 1 auto;min-height:0;}
+.pane{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;min-height:0;}
+.pane.notes{border-right:1px solid var(--line);flex-basis:46%;}
+.pane-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:var(--panel2);}
+.pane-h b{font-size:12.5px;}
+.pane-b{flex:1 1 auto;overflow:auto;padding:12px;}
+.tabbar{display:none;border-bottom:1px solid var(--line);}
+.tabbar button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:9px;font-size:13px;font-weight:600;}
+.tabbar button.on{color:var(--txt);border-bottom-color:var(--blue);}
+.seg{padding:6px 8px;border-radius:8px;margin-bottom:4px;position:relative;}
+.seg:hover{background:#1c2029;}
+.seg .en{font-size:14px;line-height:1.5;}
+.seg .zh{font-size:12.5px;line-height:1.5;color:#8b919c;margin-top:2px;}
+.seg .zh.pending{color:#5a606a;font-style:italic;}
+.seg .at{font-size:10px;color:#5a606a;margin-right:6px;font-variant-numeric:tabular-nums;}
+.seg.star{background:#2a2718;}
+.seg.manual .en{color:#cfe2ff;}
+.seg .ops{position:absolute;right:6px;top:4px;display:none;gap:4px;}
+.seg:hover .ops{display:flex;}
+.seg .ops button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:6px;font-size:11px;padding:1px 6px;cursor:pointer;}
+.interim{color:#6f7682;font-style:italic;padding:6px 8px;font-size:14px;min-height:20px;}
+.manual-in{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);background:var(--panel2);}
+.manual-in input{flex:1;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;}
+.card h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.card h3 .sp{flex:1;}
+.summ .kw{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.summ .kw span{background:#1f2633;border:1px solid var(--line);border-radius:10px;padding:1px 8px;font-size:11px;color:#b9c3d6;}
+.summ .li{padding:5px 0;border-bottom:1px dashed #262a33;}
+.summ .li .en{font-size:13px;line-height:1.45;}
+.summ .li .zh{font-size:12px;color:#8b919c;line-height:1.45;}
+.summ h4{margin:10px 0 4px;font-size:12px;color:var(--gold);}
+.md{font-size:13px;line-height:1.6;}
+.md h1,.md h2,.md h3{font-size:14px;margin:12px 0 6px;color:var(--gold);}
+.md h1{font-size:16px;}
+.md ul{padding-left:20px;margin:4px 0;}
+.md p{margin:6px 0;}
+.md code{background:#0f1115;padding:0 4px;border-radius:4px;}
+.res{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed #262a33;}
+.res a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;}
+.res input{flex:1;font-size:12px;padding:3px 6px;}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px;}
+.imgs .im{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000;aspect-ratio:4/3;cursor:pointer;}
+.imgs .im img{width:100%;height:100%;object-fit:cover;display:block;}
+.imgs .im .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.7);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;}
+.drop{border:1px dashed #3a4050;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:11.5px;margin-top:8px;}
+.drop.over{border-color:var(--blue);color:var(--blue);}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;}
+.viewer.on{display:flex;}
+.viewer img{max-width:96vw;max-height:94vh;object-fit:contain;}
+.recpill{position:fixed;right:14px;bottom:14px;background:var(--red);color:#fff;border-radius:20px;padding:8px 14px;font-weight:600;cursor:pointer;z-index:90;box-shadow:0 6px 20px rgba(0,0,0,.6);animation:pulse 1.4s infinite;display:none;font-size:12px;}
+.recpill.on{display:block;}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b3140;color:#fff;padding:9px 16px;border-radius:20px;font-size:12.5px;z-index:300;opacity:0;transition:.25s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.6);max-width:90vw;}
+.toast.on{opacity:1;}
+.ov-wrap{flex:1 1 auto;overflow:auto;padding:16px;max-width:980px;width:100%;margin:0 auto;}
+
+@media (max-width:760px){
+  body{font-size:14px;}
+  header{padding:8px 12px;gap:8px;}
+  header h1{font-size:15px;}
+  header p,.legend{display:none;}
+  .hr{width:100%;justify-content:flex-start;}
+  .search{max-width:none;flex:1 1 100%;order:-1;}
+  .scroller{display:none;}
+  .mlist{display:block;}
+  .rec-head{padding:8px 10px;gap:6px;}
+  .rec-head .ttl{flex-basis:100%;order:-1;}
+  .rec-head .ttl b{font-size:13px;}
+  .rec-head .btn.rec{flex:1;justify-content:center;}
+  .rec-head .timer{min-width:0;}
+  .tabbar{display:flex;}
+  .pane{display:none;}
+  .pane.on{display:flex;flex-basis:100%;}
+  .pane.notes{border-right:0;}
+  .seg{padding-right:66px;}
+  .seg .ops{display:flex;}
+  .modal{padding:16px;max-height:92vh;}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="viewer" id="viewer" onclick="this.classList.remove('on')"><img id="viewerImg" alt=""></div>
+<div class="recpill" id="recpill"></div>
+<div class="toast" id="toast"></div>
+<script src="data/catalog.js"></script>
+<script src="data/curated.js"></script>
+<script>
+/* ====================================================================
+   AU 2026 Schedule Notebook — single-file static app
+   - Calendar (curated AI/MCP schedule + any catalog session you add)
+   - Per-session record page: live bilingual transcript + notes
+   - Local (no-API) summarizer, optional Claude API summarizer
+   - Real-time save to localStorage/IndexedDB, optional GitHub sync
+   ==================================================================== */
+'use strict';
+const CAT = window.__CATALOG__ || [];
+const CUR = window.__CURATED__ || { S: [], DAYS: [] };
+const DAYKEY = { mon: '2026-09-14', tue: '2026-09-15', wed: '2026-09-16', thu: '2026-09-17' };
+const DAYS = [
+  { d: '2026-09-14', en: 'Mon · Sep 14', zh: '周一 · 9/14', sub: 'AI/Developer Day (+$199)' },
+  { d: '2026-09-15', en: 'Tue · Sep 15', zh: '周二 · 9/15', sub: 'Included in pass' },
+  { d: '2026-09-16', en: 'Wed · Sep 16', zh: '周三 · 9/16', sub: 'Included in pass' },
+  { d: '2026-09-17', en: 'Thu · Sep 17', zh: '周四 · 9/17', sub: 'Included in pass' },
+];
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const fmt = (min) => { const h = Math.floor(min / 60), m = min % 60, ap = h >= 12 ? 'PM' : 'AM', hr = h > 12 ? h - 12 : (h === 0 ? 12 : h); return hr + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; };
+const dots = (n) => '★'.repeat(n || 0);
+const nid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const hms = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); };
+function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), ms); }
+const isMobile = () => window.matchMedia('(max-width:760px)').matches;
+
+/* ---------------- sessions: catalog + curated ---------------- */
+const SESS = {};
+for (const c of CAT) {
+  const t = c.times[0] || {};
+  SESS[c.code] = { code: c.code, title: c.title, type: c.type, abstract: c.abstract, speakers: c.speakers || [], date: t.date || '', s: t.s ?? 0, e: t.e ?? 0, room: t.room || '', times: c.times, topics: (c.topics || []).filter(x => x !== 'None'), level: c.level, url: c.url, pri: 3, r: null, tags: [], links: [], curated: false };
+}
+for (const s of CUR.S) {
+  const base = SESS[s.code] || { code: s.code, title: s.en, type: (s.tags || []).some(t => t[0] === 'lab') ? 'Hands-on Lab' : 'AI/Developer Day', abstract: '', speakers: s.speakers || [], room: '', times: [], topics: [], url: '', level: '' };
+  Object.assign(base, { zh: s.zh, date: DAYKEY[s.d], s: s.start, e: s.end, pri: s.pri || 3, r: s.r, tags: s.tags || [], links: s.links || [], nEn: s.nEn, nZh: s.nZh, nt: s.nt, full: !!s.full, curated: true });
+  if (!base.abstract) base.abstract = s.fdesc || '';
+  SESS[s.code] = base;
+}
+const CURATED_CODES = CUR.S.map(s => s.code);
+
+/* ---------------- state / persistence ---------------- */
+const LS_KEY = 'au26.state.v1';
+const DEFAULT_REPO = 'Yushi219/AU-Schedule-Notebook';
+let S = load();
+function load() {
+  let s = null; try { s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) { }
+  s = s || {};
+  s.schedule = s.schedule || {};   // code -> {addedAt, pri}
+  s.removed = s.removed || {};     // code -> ts
+  s.notes = s.notes || {};         // code -> note
+  s.overview = s.overview || { local: '', ai: '', at: 0 };
+  s.settings = Object.assign({ claudeKey: '', ghToken: '', ghRepo: DEFAULT_REPO, ghBranch: 'main', speechLang: 'en-US', lang: 'zh', translator: 'auto' }, s.settings || {});
+  s.dirty = s.dirty || {};         // path -> true (needs GitHub push)
+  return s;
+}
+let saveT = null;
+function save(now) {
+  const run = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { console.error(e); toast('本地存储失败: ' + e.message, 4000); } };
+  if (now) { clearTimeout(saveT); run(); } else { clearTimeout(saveT); saveT = setTimeout(run, 250); }
+}
+window.addEventListener('beforeunload', () => save(true));
+function note(code, create) {
+  let n = S.notes[code];
+  if (!n && create) { n = S.notes[code] = { code, transcript: [], keynotes: '', keynotesAt: 0, methods: '', methodsAt: 0, summary: { local: null, ai: '', aiAt: 0, localAt: 0 }, resources: [], images: [], updatedAt: 0, recStart: 0 }; }
+  return n;
+}
+function touchNote(code) { const n = note(code, true); n.updatedAt = Date.now(); S.dirty['notes/' + code + '.json'] = true; save(); gh.schedule(); }
+function hasNotes(code) { const n = S.notes[code]; return !!(n && (n.transcript.length || n.keynotes || n.methods || n.resources.length || n.images.length)); }
+function scheduledCodes() {
+  const set = new Set();
+  for (const c of CURATED_CODES) if (!S.removed[c] || (S.schedule[c] && S.schedule[c].addedAt > S.removed[c])) set.add(c);
+  for (const c of Object.keys(S.schedule)) if (SESS[c] && !(S.removed[c] > (S.schedule[c].addedAt || 0))) set.add(c);
+  return [...set];
+}
+function isScheduled(code) { return scheduledCodes().includes(code); }
+function addToSchedule(code) { S.schedule[code] = { addedAt: Date.now(), pri: S.schedule[code]?.pri }; delete S.removed[code]; S.dirty['notes/schedule.json'] = true; save(); gh.schedule(); }
+function removeFromSchedule(code) { S.removed[code] = Date.now(); delete S.schedule[code]; S.dirty['notes/schedule.json'] = true; save(); gh.schedule(); }
+function effPri(code) { const s = SESS[code]; return (S.schedule[code] && S.schedule[code].pri) || s.pri || 3; }
+
+/* ---------------- IndexedDB for images ---------------- */
+const idb = {
+  db: null,
+  open() { return this.db ? Promise.resolve(this.db) : new Promise((res, rej) => { const r = indexedDB.open('au26', 1); r.onupgradeneeded = () => r.result.createObjectStore('img', { keyPath: 'id' }); r.onsuccess = () => { this.db = r.result; res(this.db); }; r.onerror = () => rej(r.error); }); },
+  async put(id, blob) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('img', 'readwrite'); t.objectStore('img').put({ id, blob }); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
+  async get(id) { const db = await this.open(); return new Promise((res, rej) => { const r = db.transaction('img').objectStore('img').get(id); r.onsuccess = () => res(r.result ? r.result.blob : null); r.onerror = () => rej(r.error); }); },
+  async del(id) { const db = await this.open(); return new Promise((res) => { const t = db.transaction('img', 'readwrite'); t.objectStore('img').delete(id); t.oncomplete = res; }); },
+};
+function shrinkImage(file, max = 1600) {
+  return new Promise((res) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => { const sc = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => { URL.revokeObjectURL(url); res({ blob: b, w: c.width, h: c.height }); }, 'image/jpeg', 0.85); };
+    img.onerror = () => res({ blob: file, w: 0, h: 0 });
+    img.src = url;
+  });
+}
+
+/* ---------------- GitHub sync (optional) ---------------- */
+const gh = {
+  timer: null, busy: false, status: '', lastOk: 0,
+  on() { return !!(S.settings.ghToken && S.settings.ghRepo); },
+  api(path) { return `https://api.github.com/repos/${S.settings.ghRepo}/contents/${path}`; },
+  hdr() { return { Authorization: 'Bearer ' + S.settings.ghToken, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; },
+  async get(path) {
+    const r = await fetch(this.api(path) + '?ref=' + encodeURIComponent(S.settings.ghBranch) + '&t=' + Date.now(), { headers: this.hdr(), cache: 'no-store' });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error('GitHub GET ' + r.status);
+    const j = await r.json();
+    if (Array.isArray(j)) return { list: j };
+    const txt = decodeURIComponent(escape(atob((j.content || '').replace(/\n/g, ''))));
+    return { sha: j.sha, json: txt ? JSON.parse(txt) : null };
+  },
+  async put(path, content, sha, message) {
+    const body = { message: message || ('sync ' + path), content, branch: S.settings.ghBranch };
+    if (sha) body.sha = sha;
+    const r = await fetch(this.api(path), { method: 'PUT', headers: { ...this.hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const t = await r.text(); throw new Error('GitHub PUT ' + r.status + ' ' + t.slice(0, 120)); }
+    return (await r.json()).content.sha;
+  },
+  b64(str) { return btoa(unescape(encodeURIComponent(str))); },
+  blobB64(blob) { return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); },
+  setStatus(st, msg) { this.status = st; this.msg = msg; document.querySelectorAll('.sync').forEach(el => { el.className = 'sync ' + st; el.textContent = msg; }); },
+  schedule() { if (!this.on()) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 12000); },
+  async push(force) {
+    if (!this.on() || this.busy) return;
+    const paths = Object.keys(S.dirty); if (!paths.length && !force) return;
+    this.busy = true; this.setStatus('busy', '☁ 同步中…');
+    try {
+      for (const p of paths) {
+        if (p === 'notes/schedule.json') await this.pushSchedule();
+        else if (p.startsWith('notes/') && p.endsWith('.json')) await this.pushNote(p.slice(6, -5));
+        delete S.dirty[p];
+      }
+      await this.pushImages();
+      this.lastOk = Date.now(); save();
+      this.setStatus('ok', '☁ 已同步 ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
+    } catch (e) { console.error(e); this.setStatus('err', '☁ 同步失败: ' + e.message); }
+    this.busy = false;
+  },
+  async pushNote(code) {
+    const local = S.notes[code]; if (!local) return;
+    const remote = await this.get(`notes/${code}.json`);
+    const merged = mergeNote(local, remote && remote.json);
+    S.notes[code] = merged;
+    const sha = await this.put(`notes/${code}.json`, this.b64(JSON.stringify(merged)), remote && remote.sha, `notes: ${code}`);
+    merged.sha = sha; save();
+    if (UI.route === 'rec' && UI.code === code) renderRec();
+  },
+  async pushSchedule() {
+    const remote = await this.get('notes/schedule.json');
+    if (remote && remote.json) mergeSchedule(remote.json);
+    const doc = { schedule: S.schedule, removed: S.removed, overview: S.overview, updatedAt: Date.now() };
+    await this.put('notes/schedule.json', this.b64(JSON.stringify(doc)), remote && remote.sha, 'schedule');
+    save();
+  },
+  async pushImages() {
+    for (const code of Object.keys(S.notes)) for (const im of S.notes[code].images) {
+      if (im.gh) continue;
+      const blob = await idb.get(im.id); if (!blob) continue;
+      try { await this.put(`notes/img/${im.id}.jpg`, await this.blobB64(blob), null, `img ${code}`); im.gh = true; save(); } catch (e) { if (String(e.message).includes('422')) { im.gh = true; save(); } else throw e; }
+    }
+  },
+  async pull(code) {
+    if (!this.on()) return false;
+    try {
+      const r = await this.get(`notes/${code}.json`);
+      if (r && r.json) { const before = JSON.stringify(S.notes[code] || null); S.notes[code] = mergeNote(S.notes[code], r.json); S.notes[code].sha = r.sha; save(); return before !== JSON.stringify(S.notes[code]); }
+    } catch (e) { console.warn(e); this.setStatus('err', '☁ 拉取失败'); }
+    return false;
+  },
+  async pullAll() {
+    if (!this.on()) return;
+    this.setStatus('busy', '☁ 拉取中…');
+    try {
+      const sch = await this.get('notes/schedule.json'); if (sch && sch.json) mergeSchedule(sch.json);
+      const dir = await this.get('notes');
+      if (dir && dir.list) for (const f of dir.list) { if (f.type === 'file' && f.name.endsWith('.json') && f.name !== 'schedule.json') { const code = f.name.slice(0, -5); const loc = S.notes[code]; if (!loc || loc.sha !== f.sha) await this.pull(code); } }
+      save(); this.setStatus('ok', '☁ 已同步'); return true;
+    } catch (e) { console.error(e); this.setStatus('err', '☁ ' + e.message); return false; }
+  },
+  imgUrl(id) { return `https://raw.githubusercontent.com/${S.settings.ghRepo}/${S.settings.ghBranch}/notes/img/${id}.jpg`; },
+};
+function mergeNote(a, b) {
+  if (!b) return a; if (!a) return b;
+  const m = new Map();
+  for (const s of [...(b.transcript || []), ...(a.transcript || [])]) { const p = m.get(s.id); m.set(s.id, p ? { ...p, ...s, tr: s.tr || p.tr, star: s.star || p.star } : s); }
+  const transcript = [...m.values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
+  const pick = (f, at) => ((a[at] || 0) >= (b[at] || 0)) ? a[f] : b[f];
+  const byId = (k) => { const mm = new Map(); for (const r of [...(b[k] || []), ...(a[k] || [])]) mm.set(r.id, { ...(mm.get(r.id) || {}), ...r }); const del = new Set([...(a.deleted || []), ...(b.deleted || [])]); return [...mm.values()].filter(r => !del.has(r.id)).sort((x, y) => (x.ts || 0) - (y.ts || 0)); };
+  const sa = a.summary || {}, sb = b.summary || {};
+  return {
+    code: a.code || b.code, transcript,
+    keynotes: pick('keynotes', 'keynotesAt'), keynotesAt: Math.max(a.keynotesAt || 0, b.keynotesAt || 0),
+    methods: pick('methods', 'methodsAt'), methodsAt: Math.max(a.methodsAt || 0, b.methodsAt || 0),
+    summary: { local: (sa.localAt || 0) >= (sb.localAt || 0) ? sa.local : sb.local, localAt: Math.max(sa.localAt || 0, sb.localAt || 0), ai: (sa.aiAt || 0) >= (sb.aiAt || 0) ? sa.ai : sb.ai, aiAt: Math.max(sa.aiAt || 0, sb.aiAt || 0) },
+    resources: byId('resources'), images: byId('images'), deleted: [...new Set([...(a.deleted || []), ...(b.deleted || [])])],
+    updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0), recStart: Math.min(a.recStart || Infinity, b.recStart || Infinity) === Infinity ? 0 : Math.min(a.recStart || Infinity, b.recStart || Infinity), sha: a.sha,
+  };
+}
+function mergeSchedule(r) {
+  for (const [c, v] of Object.entries(r.schedule || {})) if (!S.schedule[c] || (v.addedAt || 0) > (S.schedule[c].addedAt || 0)) S.schedule[c] = v;
+  for (const [c, t] of Object.entries(r.removed || {})) if (!S.removed[c] || t > S.removed[c]) S.removed[c] = t;
+  if (r.overview && (r.overview.at || 0) > (S.overview.at || 0)) S.overview = r.overview;
+}
+setInterval(() => { if (gh.on() && Object.keys(S.dirty).length && navigator.onLine) gh.push(); }, 30000);
+
+/* ---------------- translation chain ---------------- */
+const tr = {
+  chrome: null, chromeTried: false,
+  initChrome() {
+    // fire-and-forget: availability()/create() can hang or download a model for a long time;
+    // the queue keeps using Google meanwhile and switches to the on-device model once it is ready
+    if (this.chromeTried || !('Translator' in self)) return; this.chromeTried = true;
+    (async () => { try { const av = await Translator.availability({ sourceLanguage: 'en', targetLanguage: 'zh' }); if (av !== 'unavailable') this.chrome = await Translator.create({ sourceLanguage: 'en', targetLanguage: 'zh' }); } catch (e) { console.warn('Translator API', e); this.chrome = null; } })();
+  },
+  async google(text, sl, tl) {
+    const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`);
+    if (!r.ok) throw new Error('gtx ' + r.status);
+    const j = await r.json(); return (j[0] || []).map(x => x[0]).join('');
+  },
+  async mymemory(text, sl, tl) {
+    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sl}|${tl}`);
+    const j = await r.json(); if (j.responseStatus !== 200) throw new Error('mymemory ' + j.responseStatus); return j.responseData.translatedText;
+  },
+  async translate(text, srcLang) {
+    const en2zh = !srcLang.startsWith('zh');
+    const sl = en2zh ? 'en' : 'zh-CN', tl = en2zh ? 'zh-CN' : 'en';
+    const mode = S.settings.translator;
+    this.initChrome();
+    if (en2zh && this.chrome && (mode === 'auto' || mode === 'chrome')) { try { return await Promise.race([this.chrome.translate(text), new Promise((_, rej) => setTimeout(() => rej(new Error('chrome translate timeout')), 8000))]); } catch (e) { console.warn(e); } }
+    if (mode !== 'claude') {
+      try { return await this.google(text, sl, tl); } catch (e) { console.warn(e); }
+      try { return await this.mymemory(text, sl, tl); } catch (e) { console.warn(e); }
+    }
+    if (S.settings.claudeKey) { const out = await claude([{ role: 'user', content: `Translate to ${en2zh ? 'Simplified Chinese' : 'English'}. Output only the translation, nothing else.\n\n${text}` }], { max_tokens: 1024 }); return out.trim(); }
+    throw new Error('no translator');
+  },
+  queue: [], running: false,
+  enqueue(code, seg) { if (!seg.tr && !this.queue.some(q => q.seg.id === seg.id)) { this.queue.push({ code, seg }); this.run(); } },
+  async run() {
+    if (this.running) return; this.running = true;
+    while (this.queue.length) {
+      const { code, seg } = this.queue.shift();
+      try { seg.tr = await this.translate(seg.t, seg.lang || 'en-US'); seg.trErr = 0; touchNote(code); if (UI.route === 'rec' && UI.code === code) updateSeg(seg); }
+      catch (e) { seg.trErr = (seg.trErr || 0) + 1; console.warn('translate fail', e); if (UI.route === 'rec' && UI.code === code) updateSeg(seg); }
+      await new Promise(r => setTimeout(r, 150));
+    }
+    this.running = false;
+  },
+  retryMissing(code) { const n = S.notes[code]; if (!n) return; for (const s of n.transcript) if (!s.tr && s.t) { s.trErr = 0; this.enqueue(code, s); } },
+};
+setInterval(() => { if (UI.route === 'rec' && UI.code && navigator.onLine) { const n = S.notes[UI.code]; if (n) for (const s of n.transcript) if (!s.tr && (s.trErr || 0) < 4) tr.enqueue(UI.code, s); } }, 20000);
+
+/* ---------------- speech engine (Web Speech API) ---------------- */
+const speech = {
+  rec: null, running: false, code: null, startedAt: 0, interim: '', wake: null, restartT: null, supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition), lastResultAt: 0,
+  async start(code) {
+    if (!this.supported) { toast('此浏览器不支持语音识别，请用 Chrome / Safari', 4000); return; }
+    if (this.running && this.code === code) return;
+    if (this.running) this.stop();
+    this.code = code; this.running = true; this.startedAt = Date.now();
+    const n = note(code, true); if (!n.recStart) n.recStart = Date.now(); touchNote(code);
+    try { if (navigator.wakeLock) this.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
+    tr.initChrome();
+    this.spawn();
+    renderRecPill();
+  },
+  spawn() {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = this.rec = new R();
+    r.continuous = true; r.interimResults = true; r.lang = S.settings.speechLang; r.maxAlternatives = 1;
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i]; const text = (res[0].transcript || '').trim(); if (!text) continue;
+        if (res.isFinal) this.commit(text); else interim += text + ' ';
+      }
+      this.interim = interim; this.lastResultAt = Date.now();
+      const el = $('#interim'); if (el) el.textContent = interim;
+    };
+    r.onerror = (e) => { console.warn('speech error', e.error); if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('麦克风权限被拒绝', 4000); this.stop(); } };
+    r.onend = () => { if (this.running && this.rec === r) { clearTimeout(this.restartT); this.restartT = setTimeout(() => { if (this.running) { try { this.spawn(); } catch (e) { console.warn(e); } } }, 250); } };
+    try { r.start(); } catch (e) { console.warn(e); }
+  },
+  commit(text) {
+    const code = this.code; const n = note(code, true);
+    const seg = { id: nid('s'), ts: Date.now(), at: Math.round((Date.now() - (n.recStart || this.startedAt)) / 1000), t: text, tr: '', lang: S.settings.speechLang };
+    n.transcript.push(seg); touchNote(code); save(true);
+    if (UI.route === 'rec' && UI.code === code) appendSeg(seg);
+    tr.enqueue(code, seg);
+  },
+  stop() {
+    this.running = false; clearTimeout(this.restartT);
+    if (this.rec) { try { this.rec.onend = null; this.rec.stop(); } catch (e) { } this.rec = null; }
+    if (this.wake) { try { this.wake.release(); } catch (e) { } this.wake = null; }
+    this.interim = ''; const el = $('#interim'); if (el) el.textContent = '';
+    if (this.code) { save(true); gh.push(); }
+    renderRecPill(); updateMicBtn();
+  },
+  setLang(l) { S.settings.speechLang = l; save(); if (this.running && this.rec) { try { this.rec.stop(); } catch (e) { } } },
+};
+document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && speech.running) { try { if (navigator.wakeLock && !speech.wake) speech.wake = await navigator.wakeLock.request('screen'); } catch (e) { } if (!speech.rec) speech.spawn(); } });
+window.addEventListener('beforeunload', (e) => { if (speech.running) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------------- Claude API (optional, direct from browser) ---------------- */
+async function claude(messages, { system, max_tokens = 8000, onDelta } = {}) {
+  const key = S.settings.claudeKey; if (!key) throw new Error('未设置 Claude API key（右上角 ⚙ 设置）');
+  const headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' };
+  const body = { model: 'claude-opus-5', max_tokens, messages, stream: !!onDelta, fallbacks: 'default' };
+  if (system) body.system = system;
+  let r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
+  if (r.status === 400) { // retry without the fallback beta in case it is not accepted
+    delete headers['anthropic-beta']; delete body.fallbacks;
+    r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) });
+  }
+  if (!r.ok) { const t = await r.text(); throw new Error('Claude API ' + r.status + ': ' + t.slice(0, 200)); }
+  if (!onDelta) { const j = await r.json(); if (j.stop_reason === 'refusal') throw new Error('Claude 拒绝了该请求'); return j.content.filter(b => b.type === 'text').map(b => b.text).join(''); }
+  const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '', out = '';
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const ln of lines) {
+      if (!ln.startsWith('data:')) continue;
+      try { const ev = JSON.parse(ln.slice(5).trim()); if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') { out += ev.delta.text; onDelta(out); } if (ev.type === 'error') throw new Error(ev.error && ev.error.message); } catch (e) { if (e instanceof SyntaxError) continue; throw e; }
+    }
+  }
+  return out;
+}
+
+/* ---------------- local (no-API) summarizer ---------------- */
+const STOP = new Set(('the a an and or of to in on for with is are was were be been being it its this that these those we you they i he she at as by from but if so not no yes do does did done have has had can could would should will just like um uh yeah okay ok right really very also more most much many our your their into out up down over about than then there here what which who how when where why all any some such only own same too going get got go know think see say said one two three thing things kind sort lot lots want need make made use used using way ways actually basically gonna wanna because through around still even well now let me us my mine his her him them itself').split(' '));
+const DOMAIN = /^(mcp|api|apis|agent|agents|agentic|revit|forma|aps|autodesk|dynamo|workflow|workflows|model|models|data|server|servers|claude|llm|llms|ai|automation|bim|acc|docs|fusion|tandem|token|tokens|auth|oauth|python|json|schema|prompt|prompts|context|tool|tools|pipeline|graph|viewer|plugin|plugins|addin|add-in|extension|design|construction|carbon|cost|qto|compliance|sdk|client|oauth2|scope|scopes|cloud|orchestration|copilot|assistant|skills|skill|spec|specs)$/i;
+const METHOD_CUE = /\b(step|steps|first|second|third|then|next|finally|approach|process|workflow|how we|we use|we used|we built|we build|we created|framework|pipeline|best practice|practices|lesson|lessons|recommend|recommendation|should|make sure|instead of|pattern|patterns|architecture|strategy|method|methodology|principle|principles|rule of thumb|the way we|our approach|start with|begin with|in order to|the key is|the trick)\b/i;
+const ACTION_CUE = /\b(you can|you should|try|check out|github|repo|repository|link|download|sign up|documentation|docs|available|open source|free|beta|preview|release|released|launch|launching|coming|q[1-4]|next year|roadmap|website|url|qr code|slides)\b/i;
+function tokens(t) { return (t || '').toLowerCase().replace(/[’']/g, '').split(/[^a-z0-9一-鿿-]+/).filter(w => w.length > 1 && !STOP.has(w) && !/^\d+$/.test(w)); }
+function summarizeLocal(n) {
+  const segs = n.transcript.filter(s => s.t && tokens(s.t).length >= 3);
+  if (!segs.length) return null;
+  const tf = {}, bg = {};
+  for (const s of segs) { const tk = tokens(s.t); for (const w of tk) tf[w] = (tf[w] || 0) + 1; for (let i = 0; i < tk.length - 1; i++) { const b = tk[i] + ' ' + tk[i + 1]; bg[b] = (bg[b] || 0) + 1; } }
+  const w = (t) => (tf[t] || 0) * (DOMAIN.test(t) ? 1.6 : 1);
+  const score = (s) => { const tk = [...new Set(tokens(s.t))]; let sc = tk.reduce((a, t) => a + w(t), 0) / (1 + Math.log(tk.length + 1)); if (s.star) sc *= 2.2; if (s.manual) sc *= 1.3; return sc; };
+  const scored = segs.map(s => ({ s, sc: score(s) }));
+  const k = Math.min(12, Math.max(5, Math.round(segs.length * 0.15)));
+  const key = scored.slice().sort((a, b) => b.sc - a.sc).slice(0, k).map(x => x.s).sort((a, b) => a.ts - b.ts);
+  const methods = scored.filter(x => METHOD_CUE.test(x.s.t)).sort((a, b) => b.sc - a.sc).slice(0, 8).map(x => x.s).sort((a, b) => a.ts - b.ts);
+  const actions = scored.filter(x => ACTION_CUE.test(x.s.t) && !key.includes(x.s)).sort((a, b) => b.sc - a.sc).slice(0, 6).map(x => x.s).sort((a, b) => a.ts - b.ts);
+  const kw = Object.keys(tf).filter(t => tf[t] >= 2).sort((a, b) => w(b) - w(a)).slice(0, 14);
+  const kb = Object.keys(bg).filter(b => bg[b] >= 2).sort((a, b) => bg[b] - bg[a]).slice(0, 6);
+  const pick = (s) => ({ id: s.id, t: s.t, tr: s.tr || '', at: s.at });
+  return { keywords: [...kb, ...kw.filter(x => !kb.some(b => b.includes(x)))].slice(0, 16), keynotes: key.map(pick), methods: methods.map(pick), actions: actions.map(pick), n: segs.length, at: Date.now() };
+}
+function overviewLocal() {
+  const docs = [];
+  for (const code of Object.keys(S.notes)) { const n = S.notes[code]; if (!hasNotes(code) || !SESS[code]) continue; const text = n.transcript.map(s => s.t).join(' ') + ' ' + n.keynotes + ' ' + n.methods; const tf = {}; for (const t of tokens(text)) tf[t] = (tf[t] || 0) + 1; docs.push({ code, n, tf, sess: SESS[code] }); }
+  if (!docs.length) return '（还没有任何课程记录。进入课程详情 → 记录页，开始录制后再来生成总览。）';
+  const df = {}; for (const d of docs) for (const t of Object.keys(d.tf)) df[t] = (df[t] || 0) + 1;
+  const themes = Object.keys(df).filter(t => df[t] >= 2 && !/^\d/.test(t)).map(t => ({ t, sc: docs.reduce((a, d) => a + Math.min(d.tf[t] || 0, 8), 0) * Math.log(1 + df[t]) * (DOMAIN.test(t) ? 1.6 : 1) })).sort((a, b) => b.sc - a.sc).slice(0, 10);
+  const L = [];
+  const title = (d) => `**${d.code}** ${S.settings.lang === 'zh' && d.sess.zh ? d.sess.zh : d.sess.title}`;
+  L.push(`# AU 2026 横向总览（本地生成 · ${docs.length} 门课 · ${new Date().toLocaleString('zh-CN')}）`);
+  L.push('\n## 一、每门课一句话');
+  for (const d of docs.sort((a, b) => (a.sess.date + a.sess.s) < (b.sess.date + b.sess.s) ? -1 : 1)) {
+    const sm = d.n.summary.local || summarizeLocal(d.n); const top = sm && sm.keynotes[0];
+    L.push(`- ${title(d)}（${d.n.transcript.length} 段记录）${top ? '：' + top.t + (top.tr ? '\n  - ' + top.tr : '') : ''}`);
+  }
+  L.push('\n## 二、跨课程主题（多门课都在讲的东西）');
+  for (const th of themes) {
+    const hit = docs.filter(d => d.tf[th.t]).sort((a, b) => b.tf[th.t] - a.tf[th.t]);
+    L.push(`\n### ${th.t}  — ${hit.length} 门课提到：${hit.map(d => d.code).join('、')}`);
+    for (const d of hit.slice(0, 4)) {
+      const seg = d.n.transcript.filter(s => new RegExp('\\b' + th.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(s.t)).sort((a, b) => (b.star ? 1 : 0) - (a.star ? 1 : 0) || b.t.length - a.t.length)[0];
+      if (seg) L.push(`- ${d.code}: ${seg.t}${seg.tr ? '\n  - ' + seg.tr : ''}`);
+    }
+  }
+  L.push('\n## 三、方法论汇总');
+  for (const d of docs) { const sm = d.n.summary.local || summarizeLocal(d.n); const ms = [...(sm ? sm.methods : []).map(m => m.t + (m.tr ? '\n  - ' + m.tr : '')), ...(d.n.methods ? [d.n.methods] : [])]; if (ms.length) { L.push(`\n### ${title(d)}`); for (const m of ms.slice(0, 5)) L.push('- ' + m); } }
+  L.push('\n## 四、课程关联组（课程表里预设的重复/相关关系）');
+  const seen = new Set();
+  for (const code of scheduledCodes()) { const s = SESS[code]; if (!s.links || !s.links.length || seen.has(code)) continue; const grp = [code, ...s.links.filter(c => SESS[c])]; grp.forEach(c => seen.add(c)); L.push(`- ${grp.map(c => `${c}${hasNotes(c) ? '📝' : ''}`).join(' ↔ ')}  （${s.title}）`); }
+  L.push('\n## 五、资源链接');
+  for (const d of docs) for (const r of d.n.resources) L.push(`- [${d.code}] ${r.title ? r.title + ' — ' : ''}${r.url}`);
+  return L.join('\n');
+}
+function md2html(md) {
+  const lines = (md || '').split('\n'); let h = '', inUl = false;
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  for (const ln of lines) {
+    const m = ln.match(/^(\s*)[-*] (.*)/);
+    if (m) { if (!inUl) { h += '<ul>'; inUl = true; } h += `<li style="margin-left:${m[1].length * 8}px">${inline(m[2])}</li>`; continue; }
+    if (inUl) { h += '</ul>'; inUl = false; }
+    const hm = ln.match(/^(#{1,3}) (.*)/);
+    if (hm) { h += `<h${hm[1].length}>${inline(hm[2])}</h${hm[1].length}>`; } else if (ln.trim()) h += `<p>${inline(ln)}</p>`;
+  }
+  if (inUl) h += '</ul>';
+  return h;
+}
+function transcriptText(n, withTr = true) { return n.transcript.map(s => `[${hms(s.at)}] ${s.t}${withTr && s.tr ? '\n    ' + s.tr : ''}`).join('\n'); }
+const SUM_SYS = '你是一位资深的建筑科技（AECO design technology）研究员，正在帮用户整理 Autodesk University 2026 课程的现场录音转写。转写来自语音识别，可能有错词、断句混乱，请根据上下文推断原意。输出使用 Markdown，中文为主，技术术语、产品名、API 名保留英文。不要编造转写里没有的内容。';
+async function summarizeAI(code, onDelta) {
+  const n = S.notes[code], s = SESS[code];
+  const text = transcriptText(n, false).slice(0, 400000);
+  const prompt = `课程：${s.code} ${s.title}\n类型：${s.type}\n官方简介：${s.abstract}\n讲者：${s.speakers.join('；')}\n\n下面是现场转写（[时间] 文本）。请输出：\n## 核心要点 (Key notes)\n- 8–15 条，每条一句中文 + 括号里关键英文术语；重要的数字、产品、版本、限制条件要保留\n## 方法论 / 工作流 (Methodology)\n- 讲者展示或建议的具体做法、步骤、架构、模式；如果有步骤请按顺序编号\n## 值得跟进 (Follow-ups)\n- 提到的工具、仓库、链接、即将发布的功能、可以回去试的东西\n## 一句话总结\n\n${n.keynotes ? '用户自己的笔记（优先参考）：\n' + n.keynotes + '\n\n' : ''}转写：\n${text}`;
+  return claude([{ role: 'user', content: prompt }], { system: SUM_SYS, max_tokens: 8000, onDelta });
+}
+async function overviewAI(onDelta) {
+  const parts = [];
+  for (const code of Object.keys(S.notes)) { const n = S.notes[code]; if (!hasNotes(code) || !SESS[code]) continue; const s = SESS[code]; const body = n.summary.ai || (n.summary.local ? n.summary.local.keynotes.map(k => '- ' + k.t).join('\n') + '\n方法：\n' + n.summary.local.methods.map(k => '- ' + k.t).join('\n') : transcriptText(n, false).slice(0, 12000)); parts.push(`### ${s.code} ${s.title}\n讲者：${s.speakers.join('；')}\n${n.keynotes ? '用户笔记：' + n.keynotes + '\n' : ''}${body}`); }
+  if (!parts.length) throw new Error('还没有任何课程记录');
+  const prompt = `以下是我在 AU 2026 听的 ${parts.length} 门课的笔记/转写摘要。很多课是散落的，请帮我横向整合：\n## 1. 全局主线\n这几天所有课加起来在讲什么大趋势（3–6 条）\n## 2. 跨课程主题\n把相关的课按主题归组，每个主题：哪几门课（写课程代码）、它们各自的角度、互相印证或矛盾的地方\n## 3. 方法论对照\n不同讲者对同一类问题（如 MCP server 设计、鉴权、agent 编排、数据接入）给出的做法对比\n## 4. 对我（建筑事务所 Design Technologist，做 Revit/APS/AI 工具）的启发与行动清单\n## 5. 待查证 / 待跟进资源\n\n${parts.join('\n\n').slice(0, 600000)}`;
+  return claude([{ role: 'user', content: prompt }], { system: SUM_SYS, max_tokens: 12000, onDelta });
+}
+
+/* ====================================================================
+   UI
+   ==================================================================== */
+const UI = { route: 'cal', code: null, mday: '2026-09-15', tab: 'trans', lang: S.settings.lang };
+function T(en, zh) { return UI.lang === 'zh' ? zh : en; }
+function stitle(s) { return UI.lang === 'zh' && s.zh ? s.zh : s.title; }
+function nav(hash) { location.hash = hash; }
+window.addEventListener('hashchange', route);
+function route() {
+  const h = location.hash || '#/';
+  const m = h.match(/^#\/rec\/([^/]+)/);
+  if (m) { UI.route = 'rec'; UI.code = decodeURIComponent(m[1]); if (!SESS[UI.code]) { toast('未知课程 ' + UI.code); nav('#/'); return; } renderRec(); if (gh.on()) gh.pull(UI.code).then(ch => { if (ch && UI.route === 'rec' && UI.code === m[1]) renderRec(); }); }
+  else if (h.startsWith('#/overview')) { UI.route = 'ov'; renderOverview(); }
+  else { UI.route = 'cal'; UI.code = null; renderCal(); }
+  renderRecPill();
+}
+function renderRecPill() { const p = $('#recpill'); if (speech.running && !(UI.route === 'rec' && UI.code === speech.code)) { p.textContent = '● 录音中 ' + speech.code; p.classList.add('on'); p.onclick = () => nav('#/rec/' + speech.code); } else p.classList.remove('on'); }
+
+/* ---------------- calendar ---------------- */
+function renderCal() {
+  const app = $('#app');
+  app.innerHTML = `
+  <header>
+    <div class="hl"><h1>${T('AU 2026 · AI/MCP Course Decision Calendar', 'AU 2026 · AI/MCP 课程决策日历')} <span class="muted" style="font-weight:400;font-size:12px">· Notebook</span></h1>
+      <p>${T('Cards span their real duration · hover a Monday card for ribbons to overlapping sessions · click any card for details & notes', '卡片按真实时长跨行 · 悬停周一卡片看重复课丝带 · 点击卡片看详情并进入记录页')}</p>
+      <div class="legend"><span><i class="dot" style="background:var(--green)"></i>${T('Top pick', '首选')}</span><span><i class="dot" style="background:var(--gold)"></i>${T('2nd choice', '次选')}</span><span><i class="dot" style="background:var(--muted)"></i>${T('Backup', '备选')}</span><span><i class="dot" style="background:var(--red)"></i>FULL</span><span><i class="dot" style="background:#8fa3c9"></i>${T('Added by me', '我添加的')}</span><span style="color:#8fe3b5">📝 ${T('has notes', '有记录')}</span></div>
+    </div>
+    <div class="hr">
+      <div class="search"><input id="q" placeholder="🔍 ${T('Search all 750 AU sessions (code / title / speaker) and add to my schedule', '搜索全部 750 门课（代码/标题/讲者），回车加入日程')}" autocomplete="off"><div class="dd" id="dd"></div></div>
+      <button class="btn" onclick="nav('#/overview')">🧭 ${T('Overview', '总览总结')}</button>
+      <button class="btn" onclick="openSettings()">⚙</button>
+      <button class="btn" onclick="toggleLang()">${T('中文', 'EN')}</button>
+    </div>
+  </header>
+  <div class="scroller"><div class="gridwrap" id="gridwrap"><svg class="ribbons" id="ribbons"></svg><div class="daynames" id="daynames"></div><div class="tg" id="tg"></div></div></div>
+  <div class="mlist" id="mlist"></div>`;
+  setupSearch();
+  renderGrid();
+  renderMobileList();
+}
+function activeDays() {
+  const codes = scheduledCodes(); const extra = new Set();
+  for (const c of codes) { const s = SESS[c]; if (s.date && !DAYS.some(d => d.d === s.date)) extra.add(s.date); }
+  return [...DAYS, ...[...extra].sort().map(d => ({ d, en: d, zh: d, sub: 'Digital / other' }))];
+}
+function renderGrid() {
+  const days = activeDays(); const codes = scheduledCodes();
+  const list = codes.map(c => SESS[c]).filter(s => s.date && s.e > s.s);
+  const set = {}; list.forEach(s => { set[s.s] = 1; set[s.e] = 1; });
+  const B = Object.keys(set).map(Number).sort((a, b) => a - b); const idxOf = {}; B.forEach((t, i) => idxOf[t] = i);
+  const dn = $('#daynames'); dn.style.gridTemplateColumns = `64px repeat(${days.length},1fr)`; dn.innerHTML = '<div class="cell"></div>' + days.map(d => `<div class="cell"><div>${T(d.en, d.zh)}</div><small>${esc(d.sub)}</small></div>`).join('');
+  const tg = $('#tg'); tg.innerHTML = ''; const nRows = B.length - 1; if (nRows < 1) return;
+  const rowsT = []; for (let i = 0; i < nRows; i++) rowsT.push('minmax(' + ((B[i + 1] - B[i]) * 3.2) + 'px,auto)');
+  tg.style.display = 'grid'; tg.style.gridTemplateColumns = `64px repeat(${days.length},1fr)`; tg.style.gridTemplateRows = rowsT.join(' ');
+  for (let i = 0; i < nRows; i++) { const tk = document.createElement('div'); tk.className = 'axis-tk' + (B[i] % 60 === 0 ? ' major' : ''); tk.textContent = fmt(B[i]); tk.style.gridColumn = '1'; tk.style.gridRow = (i + 1) + ' / ' + (i + 2); tg.appendChild(tk); }
+  days.forEach((d, di) => {
+    const dl = list.filter(s => s.date === d.d).sort((a, b) => a.s - b.s || effPri(a.code) - effPri(b.code));
+    const clusters = [];
+    dl.forEach(s => { const cl = clusters.find(c => c.some(x => s.s < x.e && x.s < s.e)); if (cl) cl.push(s); else clusters.push([s]); });
+    clusters.forEach(cl => {
+      cl.sort((a, b) => a.s - b.s || effPri(a.code) - effPri(b.code));
+      const laneEnd = [];
+      cl.forEach(s => { let placed = -1; for (let li = 0; li < laneEnd.length; li++) if (laneEnd[li] <= s.s) { placed = li; break; } if (placed < 0) { placed = laneEnd.length; laneEnd.push(0); } s.__lane = placed; laneEnd[placed] = s.e; });
+      const minS = Math.min(...cl.map(x => x.s)), maxE = Math.max(...cl.map(x => x.e));
+      const wrap = document.createElement('div'); wrap.className = 'sub'; wrap.style.gridColumn = (di + 2) + ' / ' + (di + 3); wrap.style.gridRow = (idxOf[minS] + 1) + ' / ' + (idxOf[maxE] + 1); wrap.style.gridTemplateColumns = `repeat(${laneEnd.length},1fr)`;
+      const sb = []; for (let k = idxOf[minS]; k <= idxOf[maxE]; k++) sb.push(B[k]);
+      wrap.style.gridTemplateRows = sb.slice(0, -1).map((t, q) => 'minmax(' + ((sb[q + 1] - t) * 3.2) + 'px,auto)').join(' ');
+      const si = {}; sb.forEach((t, i) => si[t] = i);
+      cl.forEach(s => { const e = card(s); e.style.gridColumn = (s.__lane + 1); e.style.gridRow = (si[s.s] + 1) + ' / ' + (si[s.e] + 1); wrap.appendChild(e); });
+      tg.appendChild(wrap);
+    });
+  });
+}
+function tagsHtml(s) { const t = (s.tags || []).map(tg => `<span class="tag ${tg[2]}">${esc(UI.lang === 'zh' ? tg[1] : tg[0])}</span>`); if (!s.curated) t.push(`<span class="tag t-add">${T('added', '自选')}</span>`); if (s.type && /lab/i.test(s.type) && !s.curated) t.push('<span class="tag t-lab">Lab</span>'); return t.join(''); }
+function noteBadge(s) { const n = S.notes[s.code]; if (!hasNotes(s.code)) return ''; return `<span class="notebadge">📝${n.transcript.length ? ' 🎙' + n.transcript.length : ''}${n.images.length ? ' 🖼' + n.images.length : ''}</span>`; }
+function card(s) {
+  const e = document.createElement('div'); const pri = effPri(s.code);
+  e.className = 'sess p' + pri + (s.full ? ' full' : '') + (!s.curated ? ' added' : '') + ((s.e - s.s) <= 20 ? ' mini' : '');
+  e.dataset.code = s.code; e.dataset.day = s.date;
+  e.innerHTML = `<span class="rank">${s.full ? 'F' : (s.curated ? pri : '+')}</span><div class="code">${esc(s.code)} ${noteBadge(s)}</div><div class="title">${esc(stitle(s))}</div><div class="time">${fmt(s.s)}–${fmt(s.e)}${s.room ? ' · ' + esc(s.room.replace('Venetian, ', '')) : ''}</div><div class="tags">${tagsHtml(s)}</div>` +
+    (s.r ? `<div class="stars"><span class="srow"><b>${T('Value', '含金量')}</b><span class="dots">${dots(s.r.v)}</span></span><span class="srow"><b>${T('Hands-on', '参与性')}</b><span class="dots">${dots(s.r.h)}</span></span></div>` : '');
+  e.onclick = () => openModal(s.code);
+  if (s.date === '2026-09-14' && s.links && s.links.length) { e.onmouseenter = () => showRibbons(s); e.onmouseleave = hideRibbons; }
+  return e;
+}
+function showRibbons(mon) {
+  const svg = $('#ribbons'); svg.innerHTML = ''; const wrap = $('#gridwrap').getBoundingClientRect();
+  const srcEl = document.querySelector(`.sess[data-day="2026-09-14"][data-code="${mon.code}"]`); if (!srcEl) return; const sr = srcEl.getBoundingClientRect();
+  const sx = sr.right - wrap.left, sy = sr.top + sr.height / 2 - wrap.top;
+  document.querySelectorAll('.sess').forEach(el => el.classList.add('dim')); srcEl.classList.remove('dim');
+  mon.links.forEach(code => {
+    const tgt = document.querySelector(`.sess:not([data-day="2026-09-14"])[data-code="${code}"]`); if (!tgt) return; tgt.classList.remove('dim'); tgt.classList.add('hi');
+    const t = tgt.getBoundingClientRect(); const tx = t.left - wrap.left, ty = t.top + t.height / 2 - wrap.top, mx = (sx + tx) / 2;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'rgba(245,197,24,0.5)'); p.setAttribute('stroke-width', '9'); p.setAttribute('stroke-linecap', 'round'); svg.appendChild(p);
+  });
+}
+function hideRibbons() { const s = $('#ribbons'); if (s) s.innerHTML = ''; document.querySelectorAll('.sess').forEach(el => { el.classList.remove('dim'); el.classList.remove('hi'); }); }
+window.addEventListener('resize', hideRibbons);
+function renderMobileList() {
+  const days = activeDays(); const el = $('#mlist'); if (!el) return;
+  if (!days.some(d => d.d === UI.mday)) UI.mday = days[1] ? days[1].d : days[0].d;
+  const list = scheduledCodes().map(c => SESS[c]).filter(s => s.date === UI.mday).sort((a, b) => a.s - b.s || effPri(a.code) - effPri(b.code));
+  let h = `<div class="daytabs">${days.map(d => `<button class="${d.d === UI.mday ? 'on' : ''}" onclick="UI.mday='${d.d}';renderMobileList()">${T(d.en, d.zh).replace(' · ', '<br>')}</button>`).join('')}</div><div class="mday">`;
+  let lastE = 0;
+  for (const s of list) {
+    if (lastE && s.s < lastE) h += `<div class="mgap">↕ ${T('overlaps with previous', '与上一节时间重叠')}</div>`;
+    lastE = Math.max(lastE, s.e); const pri = effPri(s.code);
+    h += `<div class="mcard p${pri}${s.full ? ' full' : ''}${!s.curated ? ' added' : ''}" onclick="openModal('${s.code}')"><div class="code">${esc(s.code)} ${noteBadge(s)}</div><div class="title">${esc(stitle(s))}</div><div class="time">${fmt(s.s)}–${fmt(s.e)}${s.room ? ' · ' + esc(s.room.replace('Venetian, ', '')) : ''}</div><div class="tags">${tagsHtml(s)}</div><div class="row"><button class="btn sm primary" onclick="event.stopPropagation();nav('#/rec/${s.code}')">🎙 ${T('Record', '记录')}</button>${s.r ? `<span class="srow"><b>${T('Value', '含金量')}</b><span class="dots">${dots(s.r.v)}</span></span>` : ''}</div></div>`;
+  }
+  if (!list.length) h += `<div class="muted" style="padding:20px;text-align:center">${T('Nothing scheduled this day. Use the search box to add sessions.', '这天还没有课程，用上方搜索框添加。')}</div>`;
+  el.innerHTML = h + '</div>';
+}
+/* search */
+function setupSearch() {
+  const q = $('#q'), dd = $('#dd'); let sel = 0, res = [];
+  const run = () => {
+    const v = q.value.trim().toLowerCase(); if (!v) { dd.classList.remove('on'); return; }
+    const words = v.split(/\s+/);
+    res = CAT.concat(CUR.S.filter(s => !CAT.some(c => c.code === s.code)).map(s => ({ code: s.code, title: s.en, speakers: s.speakers || [], times: [], _cur: true }))).map(c => {
+      const hay = (c.code + ' ' + c.title + ' ' + (c.speakers || []).join(' ')).toLowerCase(); let sc = 0;
+      for (const w of words) { if (!hay.includes(w)) return null; sc += c.code.toLowerCase().startsWith(w) ? 10 : c.title.toLowerCase().includes(w) ? 3 : 1; }
+      if (c.code.toLowerCase() === v) sc += 50; return { c, sc };
+    }).filter(Boolean).sort((a, b) => b.sc - a.sc).slice(0, 14).map(x => x.c);
+    sel = 0; draw();
+  };
+  const draw = () => {
+    if (!res.length) { dd.innerHTML = `<div class="it muted">${T('No match', '没有匹配')}</div>`; dd.classList.add('on'); return; }
+    dd.innerHTML = res.map((c, i) => { const s = SESS[c.code]; const t = s && s.date ? `${T(dayName(s.date), dayName(s.date, true))} ${fmt(s.s)}–${fmt(s.e)}${s.room ? ' · ' + esc(s.room.replace('Venetian, ', '')) : ''}` : ''; return `<div class="it ${i === sel ? 'sel' : ''}" data-i="${i}"><div class="c">${esc(c.code)}</div><div style="flex:1;min-width:0"><div class="t">${esc(c.title)}</div><div class="m">${t}${c.type ? ' · ' + esc(c.type) : ''}${(c.speakers || []).length ? ' · ' + esc(c.speakers[0].split(',')[0]) : ''}</div></div>${isScheduled(c.code) ? `<span class="in">✓ ${T('in schedule', '已在日程')}</span>` : ''}</div>`; }).join('');
+    dd.classList.add('on');
+    dd.querySelectorAll('.it[data-i]').forEach(el => { el.onmousedown = (e) => { e.preventDefault(); choose(+el.dataset.i); }; });
+  };
+  const choose = (i) => { const c = res[i]; if (!c) return; if (!isScheduled(c.code)) { addToSchedule(c.code); toast(`✓ ${c.code} ${T('added to schedule', '已加入日程')}`); renderGrid(); renderMobileList(); } q.value = ''; dd.classList.remove('on'); openModal(c.code); };
+  q.oninput = run; q.onfocus = () => { if (q.value.trim()) run(); }; q.onblur = () => setTimeout(() => dd.classList.remove('on'), 150);
+  q.onkeydown = (e) => { if (e.key === 'ArrowDown') { sel = Math.min(sel + 1, res.length - 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { sel = Math.max(sel - 1, 0); draw(); e.preventDefault(); } else if (e.key === 'Enter') { choose(sel); } else if (e.key === 'Escape') { dd.classList.remove('on'); q.blur(); } };
+}
+function dayName(date, zh) { const d = DAYS.find(x => x.d === date); if (d) return zh ? d.zh.split(' · ')[0] : d.en.split(' · ')[0]; return date; }
+
+/* modal */
+function openModal(code) {
+  const s = SESS[code]; if (!s) return; const m = $('#modal'); const n = S.notes[code]; const sch = isScheduled(code);
+  const noteTxt = UI.lang === 'zh' ? s.nZh : s.nEn;
+  const times = (s.times && s.times.length > 1) ? `<div class="muted" style="font-size:11.5px">${T('All times', '全部场次')}: ${s.times.map(t => `${dayName(t.date)} ${fmt(t.s)}–${fmt(t.e)} (${esc(t.room.replace('Venetian, ', ''))})`).join(' · ')}</div>` : '';
+  m.innerHTML = `<span class="close" onclick="closeModal()">×</span><div class="m-code">${esc(s.code)} · ${esc(s.type || '')}${s.level ? ' · ' + esc(s.level) : ''}</div>
+    <h2>${esc(stitle(s))}</h2>${s.zh && UI.lang === 'zh' ? `<div class="muted" style="font-size:12px">${esc(s.title)}</div>` : ''}
+    <div class="m-meta">${s.date ? `${T(dayName(s.date), dayName(s.date, true))} ${fmt(s.s)} – ${fmt(s.e)}` : T('Time TBD', '时间未定')}${s.room ? ' · ' + esc(s.room) : ''}${times}</div>
+    <div class="m-tags">${tagsHtml(s)}${(s.topics || []).slice(0, 6).map(t => `<span class="tag t-short">${esc(t)}</span>`).join('')}</div>
+    <div class="m-actions"><button class="btn primary" onclick="closeModal();nav('#/rec/${s.code}')">🎙 ${T('Open record page', '进入记录页')}${hasNotes(code) ? ` (${n.transcript.length} ${T('segments', '段')})` : ''}</button>
+      ${sch ? `<button class="btn danger" onclick="removeFromSchedule('${s.code}');closeModal();renderGrid();renderMobileList();toast('${T('Removed', '已移出日程')}')">${T('Remove from schedule', '移出日程')}</button>` : `<button class="btn" onclick="addToSchedule('${s.code}');closeModal();renderGrid();renderMobileList();toast('✓ ${T('Added', '已加入日程')}')">＋ ${T('Add to schedule', '加入日程')}</button>`}
+      ${s.url ? `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">AU ${T('catalog', '目录')} ↗</a>` : ''}</div>
+    ${s.r ? `<div class="rate-box"><span class="srow"><b>${T('Value', '含金量')}</b> <span class="dots">${dots(s.r.v)}</span></span><span class="srow"><b>${T('Hands-on', '参与性')}</b> <span class="dots">${dots(s.r.h)}</span></span></div>` : ''}
+    ${noteTxt ? `<div class="sec-h">${T('My take', '我的点评')}</div><div class="m-note ${s.nt || ''}">${esc(noteTxt)}</div>` : ''}
+    ${hasNotes(code) && n.keynotes ? `<div class="sec-h">Keynotes</div><div class="m-desc">${esc(n.keynotes.slice(0, 600))}${n.keynotes.length > 600 ? '…' : ''}</div>` : ''}
+    <div class="sec-h">${T('Description', '课程描述')}</div><div class="m-desc">${esc(s.abstract || '—')}</div>
+    <div class="sec-h">${T('Speakers', '讲者')}</div><div class="m-spk">${(s.speakers || []).map(x => `<div>${esc(x)}</div>`).join('') || '—'}</div>`;
+  $('#overlay').classList.add('on');
+}
+function closeModal() { $('#overlay').classList.remove('on'); }
+$('#overlay').onclick = (e) => { if (e.target === e.currentTarget) closeModal(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+function toggleLang() { UI.lang = UI.lang === 'zh' ? 'en' : 'zh'; S.settings.lang = UI.lang; save(); route(); }
+
+/* settings */
+function openSettings() {
+  const m = $('#modal'); const st = S.settings;
+  m.innerHTML = `<span class="close" onclick="closeModal()">×</span><h2>⚙ ${T('Settings', '设置')}</h2>
+  <div class="field"><label>GitHub Token（${T('for cross-device sync of notes/transcripts', '用于手机/电脑之间同步记录')}）</label><input id="st_gh" type="password" value="${esc(st.ghToken)}" placeholder="github_pat_… / ghp_…"><small>${T('Fine-grained token with Contents: Read & write on this repo. Notes are written to notes/*.json in the repo. Leave empty to keep everything local-only.', '在 GitHub → Settings → Developer settings → Fine-grained tokens 创建，只勾选本仓库 Contents: Read and write。留空则只保存在本机浏览器。')}</small></div>
+  <div class="field"><label>GitHub Repo / Branch</label><div style="display:flex;gap:6px"><input id="st_repo" value="${esc(st.ghRepo)}" style="flex:2"><input id="st_br" value="${esc(st.ghBranch)}" style="flex:1"></div></div>
+  <div class="field"><label>Claude API Key（${T('optional: AI summaries & fallback translation', '可选：AI 总结、翻译兜底')}）</label><input id="st_ck" type="password" value="${esc(st.claudeKey)}" placeholder="sk-ant-…"><small>${T('Only used from this browser directly to api.anthropic.com. Local summarizer works without it.', '只在本浏览器里直接调用 api.anthropic.com，不经过任何服务器。不填也能用"本地总结"。')}</small></div>
+  <div class="field"><label>${T('Speech language', '识别语言')}</label><select id="st_sl"><option value="en-US" ${st.speechLang === 'en-US' ? 'selected' : ''}>English (en-US)</option><option value="zh-CN" ${st.speechLang === 'zh-CN' ? 'selected' : ''}>中文 (zh-CN)</option></select></div>
+  <div class="field"><label>${T('Translator', '翻译引擎')}</label><select id="st_tr"><option value="auto" ${st.translator === 'auto' ? 'selected' : ''}>${T('Auto (Chrome built-in → Google → MyMemory → Claude)', '自动（Chrome 内置 → Google → MyMemory → Claude）')}</option><option value="google" ${st.translator === 'google' ? 'selected' : ''}>Google / MyMemory</option><option value="claude" ${st.translator === 'claude' ? 'selected' : ''}>Claude only</option></select></div>
+  <div class="m-actions"><button class="btn primary" onclick="saveSettings()">${T('Save', '保存')}</button><button class="btn" onclick="saveSettings(true)">☁ ${T('Save & sync now', '保存并立即同步')}</button><button class="btn" onclick="exportAll()">⬇ ${T('Export all JSON', '导出全部 JSON')}</button><label class="btn">⬆ ${T('Import JSON', '导入 JSON')}<input type="file" accept="application/json" style="display:none" onchange="importAll(this.files[0])"></label></div>
+  <div class="muted" style="font-size:11px;line-height:1.6;margin-top:10px">${T('Everything is saved to this browser instantly (localStorage / IndexedDB). With a GitHub token, notes are also pushed to the repo every ~12s while you record, so the phone and the laptop see the same transcript.', '所有内容都会即时保存到本机浏览器（localStorage / IndexedDB）。填了 GitHub token 后，录制时每 ~12 秒把记录推到仓库，手机和电脑就能看到同一份转写。')}<br>Speech: ${speech.supported ? '✓ Web Speech API' : '✗ ' + T('not supported here', '此浏览器不支持')} · Translator API: ${'Translator' in self ? '✓' : '✗'}</div>`;
+  $('#overlay').classList.add('on');
+}
+async function saveSettings(syncNow) {
+  const st = S.settings; st.ghToken = $('#st_gh').value.trim(); st.ghRepo = $('#st_repo').value.trim() || DEFAULT_REPO; st.ghBranch = $('#st_br').value.trim() || 'main'; st.claudeKey = $('#st_ck').value.trim(); st.speechLang = $('#st_sl').value; st.translator = $('#st_tr').value; save(true); closeModal(); toast(T('Saved', '已保存'));
+  if (syncNow && gh.on()) { const ok = await gh.pullAll(); if (ok) { S.dirty['notes/schedule.json'] = true; for (const c of Object.keys(S.notes)) S.dirty['notes/' + c + '.json'] = true; await gh.push(true); route(); } }
+}
+function exportAll() { const blob = new Blob([JSON.stringify({ ...S, settings: { ...S.settings, ghToken: '', claudeKey: '' } }, null, 1)], { type: 'application/json' }); dl(blob, 'au26-notebook-' + new Date().toISOString().slice(0, 10) + '.json'); }
+function importAll(f) { if (!f) return; const fr = new FileReader(); fr.onload = () => { try { const j = JSON.parse(fr.result); for (const c of Object.keys(j.notes || {})) S.notes[c] = mergeNote(S.notes[c], j.notes[c]); mergeSchedule(j); save(true); toast('导入完成'); closeModal(); route(); } catch (e) { toast('导入失败: ' + e.message); } }; fr.readAsText(f); }
+function dl(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+
+/* ---------------- record page ---------------- */
+let timerI = null;
+function renderRec() {
+  const code = UI.code, s = SESS[code], n = note(code, true);
+  const app = $('#app');
+  app.innerHTML = `<div class="rec">
+    <div class="rec-head">
+      <button class="btn sm" onclick="nav('#/')">← ${T('Calendar', '日历')}</button>
+      <div class="ttl"><b>${esc(s.code)} · ${esc(stitle(s))}</b><span>${s.date ? T(dayName(s.date), dayName(s.date, true)) + ' ' + fmt(s.s) + '–' + fmt(s.e) : ''}${s.room ? ' · ' + esc(s.room.replace('Venetian, ', '')) : ''}${s.speakers[0] ? ' · ' + esc(s.speakers[0].split(',')[0]) : ''}</span></div>
+      <span class="timer" id="timer">${n.recStart ? hms((Date.now() - n.recStart) / 1000) : '00:00'}</span>
+      <select id="slang" class="btn sm" onchange="speech.setLang(this.value)" style="padding:4px 8px"><option value="en-US" ${S.settings.speechLang === 'en-US' ? 'selected' : ''}>EN</option><option value="zh-CN" ${S.settings.speechLang === 'zh-CN' ? 'selected' : ''}>中文</option></select>
+      <button class="btn rec" id="micbtn" onclick="toggleMic()"></button>
+      <span class="sync ${gh.status}" id="syncst">${gh.on() ? (gh.msg || '☁ GitHub') : '💾 ' + T('local only', '仅本机')}</span>
+      <button class="btn sm" onclick="openSettings()">⚙</button>
+      <button class="btn sm" onclick="exportNote('${code}')">⬇ .md</button>
+    </div>
+    <div class="tabbar"><button class="${UI.tab === 'trans' ? 'on' : ''}" onclick="UI.tab='trans';renderRec()">🎙 ${T('Transcript', '实时记录')}</button><button class="${UI.tab === 'notes' ? 'on' : ''}" onclick="UI.tab='notes';renderRec()">📝 ${T('Notes', '笔记 / 总结')}</button></div>
+    <div class="rec-body">
+      <div class="pane notes ${UI.tab === 'notes' ? 'on' : ''}" id="notesPane">
+        <div class="pane-h"><b>📝 Keynotes</b><span class="sp" style="flex:1"></span>
+          <button class="btn sm" onclick="doLocalSummary('${code}')">⚡ ${T('Local summary', '本地总结')}</button>
+          <button class="btn sm" onclick="doAISummary('${code}')" ${S.settings.claudeKey ? '' : 'title="需要 Claude API key"'}>✨ Claude ${T('summary', '总结')}</button></div>
+        <div class="pane-b" id="notesBody"></div>
+      </div>
+      <div class="pane trans ${UI.tab === 'trans' ? 'on' : ''}" id="transPane">
+        <div class="pane-h"><b>🎙 ${T('Live transcript', '实时转写')}</b><span class="muted" id="segcount">${n.transcript.length} ${T('segments', '段')}</span><span class="sp" style="flex:1"></span>
+          <button class="btn sm" onclick="tr.retryMissing('${code}');toast('重新翻译中…')">🔁 ${T('Retry translations', '补翻译')}</button>
+          <button class="btn sm" onclick="copyTranscript('${code}')">📋</button></div>
+        <div class="pane-b" id="transBody"><div id="segs"></div><div class="interim" id="interim"></div></div>
+        <div class="manual-in"><input id="manual" placeholder="${T('Type a note or a missed sentence, Enter to add', '手动补一句（听不清/关键词），回车加入')}" onkeydown="if(event.key==='Enter')addManual('${code}')"><button class="btn sm" onclick="addManual('${code}')">＋</button></div>
+      </div>
+    </div></div>`;
+  renderNotes(); renderSegs(); updateMicBtn();
+  clearInterval(timerI); timerI = setInterval(() => { const t = $('#timer'); const nn = S.notes[code]; if (t && nn && nn.recStart && speech.running && speech.code === code) t.textContent = hms((Date.now() - nn.recStart) / 1000); }, 1000);
+  for (const sg of n.transcript) if (!sg.tr && (sg.trErr || 0) < 4) tr.enqueue(code, sg);
+}
+function updateMicBtn() { const b = $('#micbtn'); if (!b) return; const on = speech.running && speech.code === UI.code; b.className = 'btn rec' + (on ? ' on' : ''); b.innerHTML = on ? '■ ' + T('Stop', '停止') : '🎙 ' + T('Start', '开始录制'); }
+async function toggleMic() { if (speech.running && speech.code === UI.code) speech.stop(); else { await speech.start(UI.code); updateMicBtn(); } }
+function segHtml(sg) { return `<span class="at">${hms(sg.at)}</span><span class="en">${esc(sg.t)}</span><div class="zh ${sg.tr ? '' : 'pending'}">${sg.tr ? esc(sg.tr) : (sg.trErr >= 4 ? '（翻译失败，点 🔁 补翻译）' : '翻译中…')}</div><div class="ops"><button onclick="starSeg('${sg.id}')" title="标记重点">${sg.star ? '★' : '☆'}</button><button onclick="delSeg('${sg.id}')" title="删除">✕</button></div>`; }
+function renderSegs() { const n = S.notes[UI.code]; const el = $('#segs'); if (!el) return; el.innerHTML = n.transcript.map(sg => `<div class="seg ${sg.star ? 'star' : ''} ${sg.manual ? 'manual' : ''}" id="seg_${sg.id}">${segHtml(sg)}</div>`).join(''); scrollBottom(true); }
+function appendSeg(sg) { const el = $('#segs'); if (!el) return; const d = document.createElement('div'); d.className = 'seg' + (sg.manual ? ' manual' : ''); d.id = 'seg_' + sg.id; d.innerHTML = segHtml(sg); el.appendChild(d); const c = $('#segcount'); if (c) c.textContent = S.notes[UI.code].transcript.length + ' ' + T('segments', '段'); scrollBottom(); }
+function updateSeg(sg) { const d = document.getElementById('seg_' + sg.id); if (d) { d.innerHTML = segHtml(sg); d.classList.toggle('star', !!sg.star); } }
+function scrollBottom(force) { const b = $('#transBody'); if (!b) return; const near = b.scrollHeight - b.scrollTop - b.clientHeight < 160; if (force || near) b.scrollTop = b.scrollHeight; }
+function starSeg(id) { const n = S.notes[UI.code]; const sg = n.transcript.find(x => x.id === id); if (!sg) return; sg.star = !sg.star; touchNote(UI.code); updateSeg(sg); }
+function delSeg(id) { const n = S.notes[UI.code]; const i = n.transcript.findIndex(x => x.id === id); if (i < 0) return; n.transcript.splice(i, 1); touchNote(UI.code); const d = document.getElementById('seg_' + id); if (d) d.remove(); }
+function addManual(code) { const inp = $('#manual'); const t = inp.value.trim(); if (!t) return; const n = note(code, true); const seg = { id: nid('m'), ts: Date.now(), at: n.recStart ? Math.round((Date.now() - n.recStart) / 1000) : 0, t, tr: '', lang: /[一-鿿]/.test(t) ? 'zh-CN' : 'en-US', manual: true }; n.transcript.push(seg); touchNote(code); appendSeg(seg); tr.enqueue(code, seg); inp.value = ''; }
+function copyTranscript(code) { navigator.clipboard.writeText(transcriptText(S.notes[code])).then(() => toast('已复制转写')); }
+function renderNotes() {
+  const code = UI.code, n = S.notes[code]; const el = $('#notesBody'); if (!el) return;
+  const sm = n.summary.local;
+  const li = (x) => `<div class="li"><div class="en">${esc(x.t)}</div>${x.tr ? `<div class="zh">${esc(x.tr)}</div>` : ''}</div>`;
+  el.innerHTML = `
+  <div class="card"><h3>✍️ Keynotes <span class="muted" style="font-weight:400">${T('(your own notes, auto-saved)', '（自己的笔记，自动保存）')}</span></h3><textarea id="kn" rows="7" placeholder="${T('Key points, quotes, numbers…', '要点、金句、数字……支持 Markdown 列表')}">${esc(n.keynotes)}</textarea></div>
+  <div class="card"><h3>🧭 ${T('Methodology', '方法论')}</h3><textarea id="mt" rows="4" placeholder="${T('Approaches / steps / patterns the speaker used', '讲者用的方法、步骤、架构模式')}">${esc(n.methods)}</textarea></div>
+  <div class="card summ"><h3>⚡ ${T('Auto summary (local, no API)', '自动总结（本地，无需 API）')}<span class="sp"></span>${sm ? `<span class="muted" style="font-weight:400">${sm.n} ${T('segs', '段')} · ${new Date(sm.at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span><button class="btn sm" onclick="appendSummaryToNotes('${code}')">${T('Append to Keynotes', '追加到 Keynotes')}</button>` : ''}</h3>
+    ${sm ? `<div class="kw">${sm.keywords.map(k => `<span>${esc(k)}</span>`).join('')}</div><h4>Key points</h4>${sm.keynotes.map(li).join('')}${sm.methods.length ? '<h4>Methodology cues</h4>' + sm.methods.map(li).join('') : ''}${sm.actions.length ? '<h4>Follow-ups / resources mentioned</h4>' + sm.actions.map(li).join('') : ''}` : `<div class="muted">${T('Click "Local summary" after some transcript has accumulated. Starred (★) segments get priority.', '转写积累一些后点上方"本地总结"。标了 ★ 的段落会优先进入总结。')}</div>`}</div>
+  <div class="card"><h3>✨ Claude ${T('summary', '总结')}<span class="sp"></span>${n.summary.ai ? `<span class="muted" style="font-weight:400">${new Date(n.summary.aiAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span><button class="btn sm" onclick="navigator.clipboard.writeText(S.notes['${code}'].summary.ai).then(()=>toast('已复制'))">📋</button>` : ''}</h3><div class="md" id="aisum">${n.summary.ai ? md2html(n.summary.ai) : `<span class="muted">${S.settings.claudeKey ? T('Click "Claude summary" above.', '点上方 "Claude 总结"。') : T('Add a Claude API key in ⚙ settings to enable.', '在 ⚙ 设置里填 Claude API key 后可用。')}</span>`}</div></div>
+  <div class="card"><h3>🔗 ${T('Resources', '资源链接')}</h3><div style="display:flex;gap:6px"><input id="resurl" placeholder="https://… ${T('paste a link, Enter', '粘贴链接，回车')}" style="flex:1" onkeydown="if(event.key==='Enter')addRes('${code}')"><button class="btn sm" onclick="addRes('${code}')">＋</button></div><div id="reslist">${n.resources.map(r => `<div class="res"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a><input value="${esc(r.title || '')}" placeholder="${T('title/note', '标题/备注')}" onchange="resTitle('${code}','${r.id}',this.value)"><button class="btn sm" onclick="delRes('${code}','${r.id}')">✕</button></div>`).join('')}</div></div>
+  <div class="card"><h3>🖼 ${T('Screenshots', '截图')}<span class="sp"></span><label class="btn sm">📷 ${T('Add', '添加')}<input type="file" accept="image/*" multiple style="display:none" onchange="addImages('${code}',this.files)"></label></h3>
+    <div class="drop" id="drop">${T('Paste (Ctrl+V) or drop images anywhere on this panel', '在这个面板里 Ctrl+V 粘贴截图，或把图片拖进来')}</div><div class="imgs" id="imgs"></div></div>`;
+  const kn = $('#kn'), mt = $('#mt');
+  kn.oninput = () => { n.keynotes = kn.value; n.keynotesAt = Date.now(); touchNote(code); };
+  mt.oninput = () => { n.methods = mt.value; n.methodsAt = Date.now(); touchNote(code); };
+  const pane = $('#notesPane');
+  pane.ondragover = (e) => { e.preventDefault(); $('#drop').classList.add('over'); }; pane.ondragleave = () => $('#drop').classList.remove('over');
+  pane.ondrop = (e) => { e.preventDefault(); $('#drop').classList.remove('over'); const fs = [...(e.dataTransfer.files || [])].filter(f => f.type.startsWith('image/')); if (fs.length) addImages(code, fs); const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'); if (url && /^https?:\/\//.test(url.trim()) && !fs.length) { $('#resurl').value = url.trim(); addRes(code); } };
+  renderImages();
+}
+document.addEventListener('paste', (e) => {
+  if (UI.route !== 'rec') return; const items = [...(e.clipboardData.items || [])]; const fs = items.filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+  if (fs.length) { e.preventDefault(); addImages(UI.code, fs); return; }
+  const t = e.clipboardData.getData('text'); if (t && /^https?:\/\/\S+$/.test(t.trim()) && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.id !== 'manual') { e.preventDefault(); const n = note(UI.code, true); if (!n.resources.some(r => r.url === t.trim())) { n.resources.push({ id: nid('r'), url: t.trim(), title: '', ts: Date.now() }); touchNote(UI.code); renderNotes(); toast('已添加链接'); } }
+});
+function addRes(code) { const inp = $('#resurl'); const u = inp.value.trim(); if (!u) return; const n = note(code, true); n.resources.push({ id: nid('r'), url: /^https?:/.test(u) ? u : 'https://' + u, title: '', ts: Date.now() }); touchNote(code); inp.value = ''; renderNotes(); }
+function resTitle(code, id, v) { const r = S.notes[code].resources.find(x => x.id === id); if (r) { r.title = v; r.ts = Date.now(); touchNote(code); } }
+function delRes(code, id) { const n = S.notes[code]; n.resources = n.resources.filter(x => x.id !== id); (n.deleted = n.deleted || []).push(id); touchNote(code); renderNotes(); }
+async function addImages(code, files) {
+  const n = note(code, true);
+  for (const f of files) { const { blob, w, h } = await shrinkImage(f); const id = nid('i'); await idb.put(id, blob); n.images.push({ id, name: f.name || 'paste', ts: Date.now(), w, h, gh: false }); }
+  touchNote(code); renderImages(); toast(`+${files.length} 张截图`);
+}
+async function renderImages() {
+  const n = S.notes[UI.code]; const el = $('#imgs'); if (!el) return; el.innerHTML = '';
+  for (const im of n.images) {
+    const d = document.createElement('div'); d.className = 'im'; const img = document.createElement('img');
+    const blob = await idb.get(im.id); img.src = blob ? URL.createObjectURL(blob) : (gh.on() ? gh.imgUrl(im.id) : ''); img.alt = im.name;
+    d.appendChild(img); const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.onclick = (e) => { e.stopPropagation(); delImage(UI.code, im.id); }; d.appendChild(x);
+    d.onclick = () => { $('#viewerImg').src = img.src; $('#viewer').classList.add('on'); }; el.appendChild(d);
+  }
+}
+async function delImage(code, id) { const n = S.notes[code]; n.images = n.images.filter(x => x.id !== id); (n.deleted = n.deleted || []).push(id); await idb.del(id); touchNote(code); renderImages(); }
+function doLocalSummary(code) { const n = S.notes[code]; const sm = summarizeLocal(n); if (!sm) { toast(T('Not enough transcript yet', '转写还太少')); return; } n.summary.local = sm; n.summary.localAt = Date.now(); touchNote(code); if (isMobile()) UI.tab = 'notes'; renderRec(); toast('⚡ ' + T('Local summary updated', '本地总结已更新')); }
+function appendSummaryToNotes(code) { const n = S.notes[code]; const sm = n.summary.local; if (!sm) return; const txt = '\n' + sm.keynotes.map(k => '- ' + k.t + (k.tr ? '\n  ' + k.tr : '')).join('\n'); n.keynotes = (n.keynotes ? n.keynotes.trimEnd() + '\n' : '') + txt.trim() + '\n'; n.keynotesAt = Date.now(); if (sm.methods.length) { n.methods = (n.methods ? n.methods.trimEnd() + '\n' : '') + sm.methods.map(k => '- ' + k.t).join('\n') + '\n'; n.methodsAt = Date.now(); } touchNote(code); renderNotes(); toast('已追加'); }
+async function doAISummary(code) {
+  if (!S.settings.claudeKey) { openSettings(); return; } const n = S.notes[code]; if (!n.transcript.length && !n.keynotes) { toast('还没有转写'); return; }
+  if (isMobile()) { UI.tab = 'notes'; renderRec(); }
+  const el = $('#aisum'); el.innerHTML = '<span class="muted">✨ Claude 正在总结…</span>';
+  try { const out = await summarizeAI(code, (t) => { el.innerHTML = md2html(t); }); n.summary.ai = out; n.summary.aiAt = Date.now(); touchNote(code); renderNotes(); toast('✨ Claude 总结完成'); }
+  catch (e) { el.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+function exportNote(code) {
+  const s = SESS[code], n = S.notes[code]; const sm = n.summary.local;
+  const md = [`# ${s.code} · ${s.title}`, s.zh ? s.zh : '', `${s.date || ''} ${fmt(s.s)}–${fmt(s.e)} · ${s.room}`, `讲者：${s.speakers.join('；')}`, '', '## Keynotes', n.keynotes || '—', '', '## Methodology', n.methods || '—', '',
+    sm ? '## Auto summary\n关键词：' + sm.keywords.join(', ') + '\n' + sm.keynotes.map(k => '- ' + k.t + (k.tr ? '\n  - ' + k.tr : '')).join('\n') + (sm.methods.length ? '\n\n### Methodology cues\n' + sm.methods.map(k => '- ' + k.t).join('\n') : '') : '',
+    n.summary.ai ? '\n## Claude summary\n' + n.summary.ai : '', '', '## Resources', n.resources.map(r => `- ${r.title ? r.title + ' — ' : ''}${r.url}`).join('\n') || '—', '', '## Screenshots', n.images.map(i => `- notes/img/${i.id}.jpg`).join('\n') || '—', '', '## Transcript', transcriptText(n)].join('\n');
+  dl(new Blob([md], { type: 'text/markdown' }), `${s.code}.md`);
+}
+
+/* ---------------- overview ---------------- */
+function renderOverview() {
+  const app = $('#app'); const o = S.overview;
+  app.innerHTML = `<div class="rec"><div class="rec-head"><button class="btn sm" onclick="nav('#/')">← ${T('Calendar', '日历')}</button><div class="ttl"><b>🧭 ${T('Cross-course overview', '横向总览总结')}</b><span>${T('Combines notes from every recorded session', '把所有有记录的课程横向结合起来')}</span></div>
+    <button class="btn" onclick="doOverviewLocal()">⚡ ${T('Generate (local)', '本地生成')}</button><button class="btn primary" onclick="doOverviewAI()">✨ Claude ${T('synthesis', '整合')}</button><button class="btn sm" onclick="dl(new Blob([S.overview.ai||S.overview.local||''],{type:'text/markdown'}),'AU2026-overview.md')">⬇ .md</button><span class="sync ${gh.status}">${gh.on() ? (gh.msg || '☁') : ''}</span></div>
+    <div class="ov-wrap"><div class="card"><h3>⚡ ${T('Local overview', '本地总览')}<span class="sp"></span><span class="muted" style="font-weight:400">${o.at ? new Date(o.at).toLocaleString('zh-CN') : ''}</span></h3><div class="md" id="ovlocal">${o.local ? md2html(o.local) : `<span class="muted">${T('Click "Generate (local)".', '点"本地生成"。')}</span>`}</div></div>
+    <div class="card"><h3>✨ Claude ${T('synthesis', '整合')}</h3><div class="md" id="ovai">${o.ai ? md2html(o.ai) : `<span class="muted">${S.settings.claudeKey ? T('Click "Claude synthesis".', '点"Claude 整合"。') : T('Needs a Claude API key (⚙).', '需要在 ⚙ 里填 Claude API key。')}</span>`}</div></div></div></div>`;
+}
+function doOverviewLocal() { S.overview.local = overviewLocal(); S.overview.at = Date.now(); S.dirty['notes/schedule.json'] = true; save(); gh.schedule(); renderOverview(); }
+async function doOverviewAI() { if (!S.settings.claudeKey) { openSettings(); return; } const el = $('#ovai'); el.innerHTML = '<span class="muted">✨ Claude 正在整合所有课程…</span>'; try { const out = await overviewAI((t) => { el.innerHTML = md2html(t); }); S.overview.ai = out; S.overview.at = Date.now(); S.dirty['notes/schedule.json'] = true; save(); gh.schedule(); renderOverview(); toast('✨ 完成'); } catch (e) { el.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; } }
+
+/* ---------------- boot ---------------- */
+route();
+if (gh.on()) gh.pullAll().then(ch => { if (UI.route !== 'rec') route(); });
+</script>
+</body>
+</html>
