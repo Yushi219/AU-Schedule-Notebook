@@ -130,6 +130,13 @@ svg.ribbons{position:absolute;inset:0;width:100%;height:100%;pointer-events:none
 .rec-head .ttl span{color:var(--muted);font-size:11px;}
 .rec-head .timer{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:56px;}
 .sync{font-size:11px;color:var(--muted);white-space:nowrap;}
+.micst{display:none;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap;max-width:260px;}
+.micst.on{display:inline-flex;}
+.micst .lvl{display:inline-block;width:64px;height:8px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;flex:none;}
+.micst .lvl b{display:block;height:100%;width:0;background:var(--green);transition:width .08s linear;}
+.micst.warn .lvl b{background:var(--gold);}.micst.err .lvl b{background:var(--red);}
+.micst.warn{color:var(--gold);}.micst.err{color:var(--red);}
+.micst span{overflow:hidden;text-overflow:ellipsis;}
 .sync.ok{color:var(--green);}.sync.err{color:var(--red);}.sync.busy{color:var(--gold);}
 .rec-body{display:flex;flex:1 1 auto;min-height:0;}
 .pane{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;min-height:0;}
@@ -201,6 +208,7 @@ svg.ribbons{position:absolute;inset:0;width:100%;height:100%;pointer-events:none
   .rec-head .ttl b{font-size:13px;}
   .rec-head .btn.rec{flex:1;justify-content:center;}
   .rec-head .timer{min-width:0;}
+  .micst{max-width:100%;flex-basis:100%;}
   .tabbar{display:flex;}
   .pane{display:none;}
   .pane.on{display:flex;flex-basis:100%;}
@@ -489,6 +497,7 @@ setInterval(() => { if (UI.route === 'rec' && UI.code && navigator.onLine) { con
 /* ---------------- speech engine (Web Speech API) ---------------- */
 const speech = {
   rec: null, running: false, code: null, startedAt: 0, interim: '', wake: null, restartT: null, supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition), lastResultAt: 0,
+  lastErr: '', lastErrAt: 0, stream: null, actx: null, meterRaf: 0, watchT: null, peak: 0, lastLoudAt: 0,
   async start(code) {
     if (!this.supported) { toast('此浏览器不支持语音识别，请用 Chrome / Safari', 4000); return; }
     if (this.running && this.code === code) return;
@@ -497,8 +506,56 @@ const speech = {
     const n = note(code, true); if (!n.recStart) n.recStart = Date.now(); touchNote(code);
     try { if (navigator.wakeLock) this.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
     tr.initChrome();
+    this.lastErr = ''; this.lastErrAt = 0; this.lastResultAt = Date.now(); this.lastLoudAt = Date.now(); this.peak = 0;
     this.spawn();
-    renderRecPill();
+    this.openMeter();
+    clearInterval(this.watchT); this.watchT = setInterval(() => this.watch(), 1000);
+    renderRecPill(); this.showStatus();
+  },
+  /* microphone level meter — proves whether the mic hears anything at all */
+  async openMeter() {
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const AC = window.AudioContext || window.webkitAudioContext; this.actx = new AC();
+      const src = this.actx.createMediaStreamSource(this.stream); const an = this.actx.createAnalyser(); an.fftSize = 512; src.connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      const tick = () => {
+        if (!this.running) return;
+        an.getByteTimeDomainData(buf); let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+        const rms = Math.sqrt(sum / buf.length); const lvl = Math.min(1, rms * 6); this.peak = Math.max(this.peak * 0.92, lvl);
+        if (lvl > 0.06) this.lastLoudAt = Date.now();
+        const b = $('#miclvl'); if (b) b.style.width = Math.round(this.peak * 100) + '%';
+        this.meterRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) { console.warn('meter', e); this.lastErr = 'meter:' + (e.name || e); this.lastErrAt = Date.now(); this.showStatus(); }
+  },
+  closeMeter() {
+    cancelAnimationFrame(this.meterRaf); this.meterRaf = 0;
+    if (this.stream) { try { this.stream.getTracks().forEach(t => t.stop()); } catch (e) { } this.stream = null; }
+    if (this.actx) { try { this.actx.close(); } catch (e) { } this.actx = null; }
+    const b = $('#miclvl'); if (b) b.style.width = '0';
+  },
+  watch() { if (this.running) this.showStatus(); },
+  /* one-line diagnosis next to the record button */
+  showStatus() {
+    const el = $('#micst'), msg = $('#micmsg'); if (!el || !msg) return;
+    const on = this.running && this.code === UI.code, err = this.lastErr;
+    const sticky = !on && this.code === UI.code && (err === 'not-allowed' || err === 'service-not-allowed' || err.startsWith('meter:'));
+    el.classList.toggle('on', on || sticky); if (!on && !sticky) return;
+    if (sticky) { el.className = 'micst on err'; msg.textContent = T('Mic permission denied — allow it via the lock icon in the address bar', '麦克风权限被拒绝，点地址栏锁图标允许后重试'); return; }
+    const now = Date.now(), quietFor = Math.round((now - this.lastLoudAt) / 1000), noResFor = Math.round((now - this.lastResultAt) / 1000);
+    let cls = '', text = '';
+    const errAge = (now - this.lastErrAt) / 1000;
+    if (err.startsWith('meter:')) { cls = 'err'; text = T('Mic unavailable', '拿不到麦克风') + ' (' + err.slice(6) + ')'; }
+    else if (err === 'network' && errAge < 20) { cls = 'err'; text = T('Speech server unreachable (Google)', '连不上语音服务器 (Google)，识别不了'); }
+    else if (err === 'audio-capture' && errAge < 20) { cls = 'err'; text = T('No microphone found', '找不到麦克风设备'); }
+    else if (err === 'not-allowed' || err === 'service-not-allowed') { cls = 'err'; text = T('Mic permission denied', '麦克风权限被拒绝'); }
+    else if (quietFor >= 8) { cls = 'warn'; text = T('Mic hears silence', '麦克风没听到声音') + ' ' + quietFor + 's'; }
+    else if (noResFor >= 30) { cls = 'warn'; text = T('Sound but no recognition', '有声音但没识别出文字') + ' ' + noResFor + 's' + (err ? ' · ' + err : ''); }
+    else if (this.lastResultAt > this.startedAt) { text = T('Recognizing', '识别中'); }
+    else { text = T('Listening…', '正在听…'); }
+    el.className = 'micst on ' + cls; msg.textContent = text;
   },
   spawn() {
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -510,10 +567,10 @@ const speech = {
         const res = e.results[i]; const text = (res[0].transcript || '').trim(); if (!text) continue;
         if (res.isFinal) this.commit(text); else interim += text + ' ';
       }
-      this.interim = interim; this.lastResultAt = Date.now();
+      this.interim = interim; this.lastResultAt = Date.now(); this.showStatus();
       const el = $('#interim'); if (el) el.textContent = interim;
     };
-    r.onerror = (e) => { console.warn('speech error', e.error); if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('麦克风权限被拒绝', 4000); this.stop(); } };
+    r.onerror = (e) => { console.warn('speech error', e.error); if (e.error !== 'aborted') { this.lastErr = e.error; this.lastErrAt = Date.now(); } if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('麦克风权限被拒绝', 4000); this.stop(); } else this.showStatus(); };
     r.onend = () => { if (this.running && this.rec === r) { clearTimeout(this.restartT); this.restartT = setTimeout(() => { if (this.running) { try { this.spawn(); } catch (e) { console.warn(e); } } }, 250); } };
     try { r.start(); } catch (e) { console.warn(e); }
   },
@@ -525,12 +582,12 @@ const speech = {
     tr.enqueue(code, seg);
   },
   stop() {
-    this.running = false; clearTimeout(this.restartT);
+    this.running = false; clearTimeout(this.restartT); clearInterval(this.watchT); this.watchT = null; this.closeMeter();
     if (this.rec) { try { this.rec.onend = null; this.rec.stop(); } catch (e) { } this.rec = null; }
     if (this.wake) { try { this.wake.release(); } catch (e) { } this.wake = null; }
     this.interim = ''; const el = $('#interim'); if (el) el.textContent = '';
     if (this.code) { save(true); gh.push(); }
-    renderRecPill(); updateMicBtn();
+    renderRecPill(); updateMicBtn(); this.showStatus();
   },
   setLang(l) { S.settings.speechLang = l; save(); if (this.running && this.rec) { try { this.rec.stop(); } catch (e) { } } },
 };
@@ -841,6 +898,7 @@ function renderRec() {
       <span class="timer" id="timer">${n.recStart ? hms((Date.now() - n.recStart) / 1000) : '00:00'}</span>
       <select id="slang" class="btn sm" onchange="speech.setLang(this.value)" style="padding:4px 8px"><option value="en-US" ${S.settings.speechLang === 'en-US' ? 'selected' : ''}>EN</option><option value="zh-CN" ${S.settings.speechLang === 'zh-CN' ? 'selected' : ''}>中文</option></select>
       <button class="btn rec" id="micbtn" onclick="toggleMic()"></button>
+      <span class="micst" id="micst"><i class="lvl"><b id="miclvl"></b></i><span id="micmsg"></span></span>
       <span class="sync ${gh.status}" id="syncst">${gh.on() ? (gh.msg || '☁ GitHub') : '💾 ' + T('local only', '仅本机')}</span>
       <button class="btn sm" onclick="openSettings()">⚙</button>
       <button class="btn sm" onclick="exportNote('${code}')">⬇ .md</button>
@@ -861,7 +919,7 @@ function renderRec() {
         <div class="manual-in"><input id="manual" placeholder="${T('Type a note or a missed sentence, Enter to add', '手动补一句（听不清/关键词），回车加入')}" onkeydown="if(event.key==='Enter')addManual('${code}')"><button class="btn sm" onclick="addManual('${code}')">＋</button></div>
       </div>
     </div></div>`;
-  renderNotes(); renderSegs(); updateMicBtn();
+  renderNotes(); renderSegs(); updateMicBtn(); speech.showStatus();
   clearInterval(timerI); timerI = setInterval(() => { const t = $('#timer'); const nn = S.notes[code]; if (t && nn && nn.recStart && speech.running && speech.code === code) t.textContent = hms((Date.now() - nn.recStart) / 1000); }, 1000);
   for (const sg of n.transcript) if (!sg.tr && (sg.trErr || 0) < 4) tr.enqueue(code, sg);
 }
