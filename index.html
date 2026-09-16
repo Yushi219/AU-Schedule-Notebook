@@ -497,7 +497,7 @@ setInterval(() => { if (UI.route === 'rec' && UI.code && navigator.onLine) { con
 /* ---------------- speech engine (Web Speech API) ---------------- */
 const speech = {
   rec: null, running: false, code: null, startedAt: 0, interim: '', wake: null, restartT: null, supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition), lastResultAt: 0,
-  lastErr: '', lastErrAt: 0, stream: null, actx: null, meterRaf: 0, watchT: null, peak: 0, lastLoudAt: 0,
+  lastErr: '', lastErrAt: 0, stream: null, actx: null, meterRaf: 0, watchT: null, peak: 0, lastLoudAt: 0, micLabel: '',
   async start(code) {
     if (!this.supported) { toast('此浏览器不支持语音识别，请用 Chrome / Safari', 4000); return; }
     if (this.running && this.code === code) return;
@@ -515,8 +515,11 @@ const speech = {
   /* microphone level meter — proves whether the mic hears anything at all */
   async openMeter() {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      /* raw signal: no echo cancellation / noise suppression, otherwise audio played by this PC is subtracted out */
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       const AC = window.AudioContext || window.webkitAudioContext; this.actx = new AC();
+      try { await this.actx.resume(); } catch (e) { }
+      try { const tk = this.stream.getAudioTracks()[0]; this.micLabel = tk ? tk.label : ''; console.log('mic device:', this.micLabel, tk && tk.getSettings()); } catch (e) { }
       const src = this.actx.createMediaStreamSource(this.stream); const an = this.actx.createAnalyser(); an.fftSize = 512; src.connect(an);
       const buf = new Uint8Array(an.fftSize);
       const tick = () => {
@@ -551,7 +554,7 @@ const speech = {
     else if (err === 'network' && errAge < 20) { cls = 'err'; text = T('Speech server unreachable (Google)', '连不上语音服务器 (Google)，识别不了'); }
     else if (err === 'audio-capture' && errAge < 20) { cls = 'err'; text = T('No microphone found', '找不到麦克风设备'); }
     else if (err === 'not-allowed' || err === 'service-not-allowed') { cls = 'err'; text = T('Mic permission denied', '麦克风权限被拒绝'); }
-    else if (quietFor >= 8) { cls = 'warn'; text = T('Mic hears silence', '麦克风没听到声音') + ' ' + quietFor + 's'; }
+    else if (quietFor >= 8) { cls = 'warn'; text = T('Mic hears silence', '麦克风没听到声音') + ' ' + quietFor + 's' + (this.micLabel ? ' · ' + this.micLabel.replace(/\s*\(.*\)$/, '').slice(0, 28) : ''); }
     else if (noResFor >= 30) { cls = 'warn'; text = T('Sound but no recognition', '有声音但没识别出文字') + ' ' + noResFor + 's' + (err ? ' · ' + err : ''); }
     else if (this.lastResultAt > this.startedAt) { text = T('Recognizing', '识别中'); }
     else { text = T('Listening…', '正在听…'); }
